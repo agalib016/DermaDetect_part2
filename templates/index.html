@@ -273,9 +273,9 @@
         <div>
           <label class="label" for="sex">Biological Sex</label>
           <select id="sex" class="input-field">
-            <option value="male">Male</option>
-            <option value="female">Female</option>
-            <option value="unknown">Unknown</option>
+            {% for opt in sex_options %}
+            <option value="{{ opt }}">{{ opt | capitalize }}</option>
+            {% endfor %}
           </select>
         </div>
 

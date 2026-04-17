@@ -17,8 +17,9 @@ A deep-learning web application that classifies skin lesion images into **7 HAM1
 - **7-class lesion classification** — MEL, NV, BCC, AKIEC, BKL, DF, VASC
 - **Gatekeeper filter** — Rejects non-skin images before classification
 - **Multi-input support** — Optional patient metadata (age, sex, lesion location) fed to a second model input
+- **User Authentication** — Secure login/registration system with SQLite database and password hashing
 - **Interactive UI** — Drag-and-drop image upload, real-time probability bar chart (Chart.js), confidence meter
-- **REST API** — `/predict`, `/health`, `/api/classes` endpoints
+- **REST API** — `/predict`, `/health`, `/api/classes` endpoints (protected by authentication)
 - **Docker-ready** — Single `docker build` + `docker run` deployment
 
 ---
@@ -51,9 +52,12 @@ A deep-learning web application that classifies skin lesion images into **7 HAM1
 
 ```
 skincancer-ai/
-├── app.py                                # Flask application (routes + inference logic)
+├── app.py                                # Flask application (routes, inference logic, auth)
+├── users.db                              # SQLite database (auto-generated on startup)
 ├── templates/
-│   └── index.html                        # Single-page UI (Tailwind CSS + Chart.js)
+│   ├── index.html                        # Single-page UI (Tailwind CSS + Chart.js)
+│   ├── login.html                        # Secure user login page
+│   └── register.html                     # User registration page
 ├── static/
 │   └── favicon.svg                       # App favicon
 ├── gatekeeper_model.keras                # Binary skin/not-skin classifier
@@ -222,6 +226,7 @@ All images are resized to **224 × 224 RGB** before inference. Pixel values are 
 
 | Variable                | Default       | Description                                      |
 | ----------------------- | ------------- | ------------------------------------------------ |
+| `SECRET_KEY`            | (auto)        | Set a secure string in production for sessions   |
 | `FLASK_ENV`             | `development` | Set to `production` for deployment               |
 | `TF_CPP_MIN_LOG_LEVEL`  | `0`           | Set to `2` to suppress TF C++ logs               |
 | `TF_ENABLE_ONEDNN_OPTS` | `1`           | Set to `0` to disable oneDNN (reduces log noise) |

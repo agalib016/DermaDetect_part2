@@ -1,9 +1,13 @@
 import os
 import pickle
 import numpy as np
-from flask import Flask, request, jsonify, render_template
+from datetime import datetime
+from flask import Flask, request, jsonify, render_template, redirect, url_for, flash
 from PIL import Image
 import tensorflow
+from flask_sqlalchemy import SQLAlchemy
+from flask_login import LoginManager, UserMixin, login_user, logout_user, login_required, current_user
+from werkzeug.security import generate_password_hash, check_password_hash
 
 try:
     from tensorflow.keras.models import load_model
@@ -13,6 +17,45 @@ except Exception:
     from keras.layers import DepthwiseConv2D as BaseDepthwiseConv2D
 
 app = Flask(__name__)
+app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'skincancer-ai-secret-key-change-in-production')
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + os.path.join(os.path.dirname(os.path.abspath(__file__)), 'users.db')
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+
+# ── Database & Login Manager ──────────────────────────────────────────────────
+db = SQLAlchemy(app)
+login_manager = LoginManager(app)
+login_manager.login_view = 'login'
+login_manager.login_message = 'Please sign in to access the diagnostics tool.'
+login_manager.login_message_category = 'error'
+
+
+class User(UserMixin, db.Model):
+    """User model for authentication."""
+    __tablename__ = 'users'
+    id = db.Column(db.Integer, primary_key=True)
+    first_name = db.Column(db.String(80), nullable=False)
+    last_name = db.Column(db.String(80), nullable=False)
+    email = db.Column(db.String(120), unique=True, nullable=False, index=True)
+    password_hash = db.Column(db.String(256), nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    def set_password(self, password):
+        self.password_hash = generate_password_hash(password)
+
+    def check_password(self, password):
+        return check_password_hash(self.password_hash, password)
+
+
+@login_manager.user_loader
+def load_user(user_id):
+    return db.session.get(User, int(user_id))
+
+
+# Create tables
+with app.app_context():
+    db.create_all()
+    print("[INFO] Database initialized (users.db)")
+
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 MODEL_CANDIDATES = [
@@ -212,18 +255,102 @@ def predict_skin_probability(img_array):
     return float(np.clip(skin_prob, 0.0, 1.0))
 
 
+# ── Authentication Routes ─────────────────────────────────────────────────────
+
+@app.route("/register", methods=["GET", "POST"])
+def register():
+    """User registration."""
+    if current_user.is_authenticated:
+        return redirect(url_for('home'))
+
+    if request.method == "POST":
+        first_name = request.form.get("first_name", "").strip()
+        last_name = request.form.get("last_name", "").strip()
+        email = request.form.get("email", "").strip().lower()
+        password = request.form.get("password", "")
+        confirm_password = request.form.get("confirm_password", "")
+
+        # Validation
+        if not all([first_name, last_name, email, password]):
+            flash("All fields are required.", "error")
+            return redirect(url_for('register'))
+
+        if len(password) < 6:
+            flash("Password must be at least 6 characters.", "error")
+            return redirect(url_for('register'))
+
+        if password != confirm_password:
+            flash("Passwords do not match.", "error")
+            return redirect(url_for('register'))
+
+        if User.query.filter_by(email=email).first():
+            flash("An account with this email already exists.", "error")
+            return redirect(url_for('register'))
+
+        # Create user
+        user = User(
+            first_name=first_name,
+            last_name=last_name,
+            email=email,
+        )
+        user.set_password(password)
+        db.session.add(user)
+        db.session.commit()
+
+        flash("Account created successfully! Please sign in.", "success")
+        return redirect(url_for('login'))
+
+    return render_template("register.html")
+
+
+@app.route("/login", methods=["GET", "POST"])
+def login():
+    """User login."""
+    if current_user.is_authenticated:
+        return redirect(url_for('home'))
+
+    if request.method == "POST":
+        email = request.form.get("email", "").strip().lower()
+        password = request.form.get("password", "")
+
+        user = User.query.filter_by(email=email).first()
+
+        if user is None or not user.check_password(password):
+            flash("Invalid email or password.", "error")
+            return redirect(url_for('login'))
+
+        login_user(user, remember=True)
+        next_page = request.args.get('next')
+        return redirect(next_page or url_for('home'))
+
+    return render_template("login.html")
+
+
+@app.route("/logout")
+@login_required
+def logout():
+    """User logout."""
+    logout_user()
+    flash("You have been signed out.", "success")
+    return redirect(url_for('login'))
+
+
+# ── Application Routes ────────────────────────────────────────────────────────
+
 @app.route("/")
+@login_required
 def home():
     sex_options = (
         list(sex_encoder.classes_) if sex_encoder else ["male", "female", "unknown"]
     )
     loc_options = list(loc_encoder.classes_) if loc_encoder else []
     return render_template(
-        "index.html", sex_options=sex_options, loc_options=loc_options
+        "index.html", sex_options=sex_options, loc_options=loc_options, user=current_user
     )
 
 
 @app.route("/predict", methods=["POST"])
+@login_required
 def predict():
     if model is None:
         return jsonify({"error": "Model is not loaded."}), 500
@@ -331,6 +458,7 @@ def health():
 
 
 @app.route("/api/classes")
+@login_required
 def api_classes():
     """Return available lesion classes and metadata."""
     sex_options = (

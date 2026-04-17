@@ -173,6 +173,21 @@
     </style>
   </head>
   <body class="min-h-screen flex flex-col items-center py-10 px-4">
+    <!-- User Nav Bar -->
+    {% if user and user.is_authenticated %}
+    <div style="position:fixed;top:0;left:0;right:0;z-index:50;background:rgba(255,255,255,0.85);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);border-bottom:1px solid #e2e8f0;padding:10px 24px;display:flex;align-items:center;justify-content:space-between">
+      <div style="display:flex;align-items:center;gap:10px">
+        <div style="width:32px;height:32px;border-radius:10px;background:linear-gradient(135deg,#0d9488,#0f766e);display:flex;align-items:center;justify-content:center;color:white;font-weight:700;font-size:13px;font-family:'DM Sans',sans-serif">{{ user.first_name[0] }}{{ user.last_name[0] }}</div>
+        <span style="font-size:14px;font-weight:500;color:#334155;font-family:'DM Sans',sans-serif">{{ user.first_name }} {{ user.last_name }}</span>
+      </div>
+      <a href="/logout" style="display:inline-flex;align-items:center;gap:6px;padding:7px 16px;border-radius:10px;font-size:13px;font-weight:600;color:#64748b;background:#f1f5f9;text-decoration:none;transition:all 0.2s;font-family:'DM Sans',sans-serif;border:1px solid #e2e8f0" onmouseover="this.style.background='#fee2e2';this.style.color='#dc2626';this.style.borderColor='#fecaca'" onmouseout="this.style.background='#f1f5f9';this.style.color='#64748b';this.style.borderColor='#e2e8f0'">
+        <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg>
+        Sign Out
+      </a>
+    </div>
+    <div style="height:56px"></div>
+    {% endif %}
+
     <!-- Header -->
     <header class="max-w-2xl w-full text-center mb-8">
       <div

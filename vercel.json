@@ -9,14 +9,7 @@
   "functions": {
     "api/index.py": {
       "maxDuration": 60,
-      "includeFiles": [
-        "templates/**",
-        "static/**",
-        "*.pkl",
-        "*.keras",
-        "*.h5",
-        "serviceAccountKey.json"
-      ]
+      "includeFiles": "{templates/**,static/**,*.pkl,*.keras,serviceAccountKey.json}"
     }
   }
 }

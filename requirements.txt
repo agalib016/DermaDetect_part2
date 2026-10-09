@@ -1,11 +1,13 @@
 # Core web framework
 flask>=3.0.0,<4.0.0
-flask-sqlalchemy>=3.1.0
 flask-login>=0.6.3
 
-# Deep learning
-tensorflow==2.20.0
-tf-keras==2.20.1
+# Firebase Database
+firebase-admin>=6.0.0
+
+# Deep learning (CPU-optimized for serverless cloud deployments)
+tensorflow-cpu>=2.15.0
+tf-keras>=2.15.0
 
 # Data / image processing
 numpy>=1.26.0

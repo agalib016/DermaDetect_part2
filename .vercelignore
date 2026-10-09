@@ -1,0 +1,39 @@
+# Version control and config
+.git/
+.github/
+.vscode/
+.idea/
+
+# Large Datasets and training images (gigabytes)
+HAM10000_images_part_1/
+HAM10000_images_part_2/
+HAM10000_segmentations_lesion_tschandl/
+HAM10000_metadata
+ISIC2018_Task3_Test_Images/
+ISIC2018_Task3_Test_NatureMedicine_AI_Interaction_Benefit.csv
+finalfitz17k/
+fitzpatrick17k.csv
+ddi_diverse_dermatology_images.apa
+
+# Python Environments & caches
+venv/
+.venv/
+env/
+ENV/
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+
+# Tests & Training scripts
+tests/
+train_unified_model.py
+analyze_dataset.py
+
+# Docker
+Dockerfile
+.dockerignore
+
+# Local databases & uploads
+users.db
+static/uploads/

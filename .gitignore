@@ -28,11 +28,13 @@ Thumbs.db
 *.swo
 
 # Model weight files (large binaries – store via Git LFS or external storage)
-# Note: existing tracked model files are intentionally committed for demo purposes.
-# For a production fork, use Git LFS: git lfs track "*.keras" "*.h5" "*.pkl"
+# Note: active inference model files are explicitly un-ignored below:
 *.h5
 *.keras
 *.pkl
+!skin-cancer-7-classes_Unified_MobileNet.keras
+!gatekeeper_model.keras
+!skin-cancer-7-classes_*.pkl
 
 # Docker
 .dockerignore

@@ -1,0 +1,452 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Learn — DermaDetect</title>
+    <link rel="icon" type="image/svg+xml" href="/static/favicon.svg" />
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet" />
+    <style>
+      :root {
+        --teal: #0d9488; --teal-dark: #0f766e;
+        --bg: #f0f4f8; --card-bg: #ffffff; --card-border: #e2e8f0;
+        --card-shadow: 0 4px 24px rgba(0,0,0,0.06);
+        --nav-bg: rgba(255,255,255,0.88); --nav-border: #e2e8f0;
+        --text-primary: #1e293b; --text-secondary: #475569; --text-muted: #94a3b8;
+        --result-bg: #f8fafc; --result-border: #f1f5f9;
+        --divider: #e2e8f0; --footer-color: #94a3b8;
+      }
+      html.dark {
+        --bg: #0f172a; --card-bg: #1e293b; --card-border: #334155;
+        --card-shadow: 0 4px 24px rgba(0,0,0,0.3);
+        --nav-bg: rgba(15,23,42,0.92); --nav-border: #334155;
+        --text-primary: #f1f5f9; --text-secondary: #94a3b8; --text-muted: #64748b;
+        --result-bg: #0f172a; --result-border: #334155;
+        --divider: #334155; --footer-color: #475569;
+      }
+      * { font-family: "DM Sans", sans-serif; }
+      body { background: var(--bg); transition: background 0.3s; }
+
+      .top-nav {
+        position: fixed; top: 0; left: 0; right: 0; z-index: 50;
+        background: var(--nav-bg); backdrop-filter: blur(16px);
+        -webkit-backdrop-filter: blur(16px);
+        border-bottom: 1px solid var(--nav-border);
+        padding: 10px 20px;
+        display: flex; align-items: center; justify-content: space-between;
+        transition: background 0.3s, border-color 0.3s;
+      }
+      .nav-left { display: flex; align-items: center; gap: 8px; }
+      .nav-avatar {
+        width: 32px; height: 32px; border-radius: 10px;
+        background: linear-gradient(135deg,#0d9488,#0f766e);
+        display: flex; align-items: center; justify-content: center;
+        color: white; font-weight: 700; font-size: 12px;
+      }
+      .nav-name { font-size: 14px; font-weight: 500; color: var(--text-primary); }
+      .nav-right { display: flex; align-items: center; gap: 6px; }
+      .nav-link {
+        display: inline-flex; align-items: center; gap: 5px;
+        padding: 6px 13px; border-radius: 9px; font-size: 13px; font-weight: 500;
+        color: var(--text-secondary); text-decoration: none;
+        border: 1px solid transparent; transition: all 0.18s;
+      }
+      .nav-link:hover { background: var(--result-bg); border-color: var(--card-border); color: var(--teal); }
+      .nav-link.active { background: #f0fdfa; color: var(--teal); border-color: #99f6e4; }
+      html.dark .nav-link.active { background: rgba(13,148,136,0.15); border-color: rgba(13,148,136,0.35); }
+      .theme-btn {
+        width: 34px; height: 34px; border-radius: 9px;
+        border: 1px solid var(--card-border); background: var(--result-bg);
+        color: var(--text-secondary); cursor: pointer;
+        display: flex; align-items: center; justify-content: center; transition: all 0.18s;
+      }
+      .theme-btn:hover { color: var(--teal); border-color: var(--teal); }
+      .nav-logout {
+        display: inline-flex; align-items: center; gap: 5px;
+        padding: 6px 13px; border-radius: 9px; font-size: 13px; font-weight: 600;
+        color: var(--text-muted); text-decoration: none;
+        border: 1px solid var(--card-border); background: var(--result-bg); transition: all 0.18s;
+      }
+      .nav-logout:hover { background: #fee2e2; color: #dc2626; border-color: #fecaca; }
+
+      .card { background: var(--card-bg); border-radius: 20px; border: 1px solid var(--card-border); box-shadow: var(--card-shadow); transition: background 0.3s, border-color 0.3s; }
+
+      /* Type cards */
+      .type-card {
+        background: var(--card-bg);
+        border: 1px solid var(--card-border);
+        border-radius: 20px;
+        padding: 28px;
+        box-shadow: var(--card-shadow);
+        transition: all 0.25s;
+        position: relative;
+        overflow: hidden;
+      }
+      .type-card:hover { transform: translateY(-3px); box-shadow: 0 12px 32px rgba(0,0,0,0.1); }
+      .type-card::before {
+        content: '';
+        position: absolute; top: 0; left: 0; right: 0; height: 4px;
+        border-radius: 20px 20px 0 0;
+      }
+      .type-card.safe::before { background: linear-gradient(90deg, #0d9488, #06b6d4); }
+      .type-card.danger::before { background: linear-gradient(90deg, #e11d48, #f97316); }
+
+      .type-tag {
+        display: inline-flex; align-items: center; gap: 5px;
+        padding: 3px 10px; border-radius: 6px;
+        font-size: 11px; font-weight: 700; letter-spacing: 0.06em;
+        text-transform: uppercase; margin-bottom: 12px;
+      }
+      .type-tag.safe { background: #f0fdfa; color: #0d9488; border: 1px solid #99f6e4; }
+      .type-tag.danger { background: #fff1f2; color: #e11d48; border: 1px solid #fecdd3; }
+      html.dark .type-tag.safe { background: rgba(13,148,136,0.15); border-color: rgba(13,148,136,0.35); }
+      html.dark .type-tag.danger { background: rgba(225,29,72,0.12); border-color: rgba(225,29,72,0.35); }
+
+      .abbr-badge {
+        display: inline-block;
+        padding: 2px 8px; border-radius: 5px;
+        font-family: 'DM Mono', monospace; font-size: 11px; font-weight: 500;
+        background: var(--result-bg); color: var(--text-muted);
+        border: 1px solid var(--card-border); margin-left: 8px;
+      }
+
+      .info-row { display: flex; gap: 8px; margin-top: 8px; flex-wrap: wrap; }
+      .info-pill {
+        display: inline-flex; align-items: center; gap: 5px;
+        padding: 4px 10px; border-radius: 8px;
+        font-size: 12px; font-weight: 500;
+        background: var(--result-bg); color: var(--text-secondary);
+        border: 1px solid var(--card-border);
+      }
+
+      .sign-list { list-style: none; margin-top: 12px; }
+      .sign-list li {
+        display: flex; align-items: flex-start; gap: 8px;
+        font-size: 13px; color: var(--text-secondary);
+        padding: 4px 0;
+      }
+      .sign-list li::before {
+        content: '';
+        width: 6px; height: 6px; border-radius: 50%;
+        background: var(--teal); margin-top: 5px; flex-shrink: 0;
+      }
+      .type-card.danger .sign-list li::before { background: #e11d48; }
+
+      h2.type-name { font-size: 20px; font-weight: 700; color: var(--text-primary); margin-bottom: 4px; }
+      p.type-desc { font-size: 13px; color: var(--text-secondary); line-height: 1.65; margin-top: 10px; }
+
+      .section-divider { height: 1px; background: linear-gradient(to right, transparent, var(--divider), transparent); margin: 32px 0; }
+
+      /* Hero */
+      .hero-card {
+        background: linear-gradient(135deg, #0d9488 0%, #0f766e 50%, #065f46 100%);
+        border-radius: 24px; padding: 48px 40px;
+        color: white; text-align: center; position: relative; overflow: hidden;
+        margin-bottom: 40px;
+      }
+      .hero-card::before {
+        content: ''; position: absolute; top: -60px; right: -60px;
+        width: 220px; height: 220px; border-radius: 50%;
+        background: rgba(255,255,255,0.06);
+      }
+      .hero-card::after {
+        content: ''; position: absolute; bottom: -80px; left: -40px;
+        width: 280px; height: 280px; border-radius: 50%;
+        background: rgba(255,255,255,0.04);
+      }
+    </style>
+  </head>
+
+  <body class="min-h-screen pt-20 pb-16 px-4">
+
+    <!-- Nav -->
+    {% if user and user.is_authenticated %}
+    <nav class="top-nav">
+      <div class="nav-left">
+        <div class="nav-avatar">
+          {% if user.avatar_url %}
+          <img src="{{ user.avatar_url }}" alt="Profile" style="width:100%;height:100%;border-radius:10px;object-fit:cover;">
+          {% else %}
+          {{ user.first_name[0] }}{{ user.last_name[0] }}
+          {% endif %}
+        </div>
+        <a href="/account" class="nav-name" style="text-decoration:none;">{{ user.first_name }} {{ user.last_name }}</a>
+      </div>
+      <div class="nav-right">
+        <a href="/" class="nav-link" style="background:var(--teal);color:white;border:none;box-shadow:0 4px 12px rgba(13,148,136,0.3);">
+          <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
+          Analyze
+        </a>
+        <a href="/get-started" class="nav-link active">
+          <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+          Get Started
+        </a>
+        <a href="/explore" class="nav-link">
+          <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9" /></svg>
+          Explore DermaDetect
+        </a>
+        <a href="/articles" class="nav-link">
+          <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z" /></svg>
+          Skin Health Articles
+        </a>
+        <a href="/dashboard" class="nav-link">
+          <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16"/></svg>
+          Dashboard
+        </a>
+        <button class="theme-btn" id="themeToggle" title="Toggle dark mode" onclick="toggleTheme()">
+          <svg id="iconSun" width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="display:none"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364-6.364l-.707.707M6.343 17.657l-.707.707M17.657 17.657l-.707-.707M6.343 6.343l-.707-.707M12 8a4 4 0 100 8 4 4 0 000-8z"/></svg>
+          <svg id="iconMoon" width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"/></svg>
+        </button>
+        <a href="/logout" class="nav-logout">
+          <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg>
+          Sign Out
+        </a>
+      </div>
+    </nav>
+    {% endif %}
+
+    <div class="max-w-4xl mx-auto">
+
+      <!-- Hero -->
+      <div class="hero-card">
+        <div style="position:relative;z-index:1">
+          <div style="width:56px;height:56px;border-radius:16px;background:rgba(255,255,255,0.15);display:flex;align-items:center;justify-content:center;margin:0 auto 20px">
+            <svg width="28" height="28" fill="none" stroke="white" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/></svg>
+          </div>
+          <h1 style="font-size:28px;font-weight:700;letter-spacing:-0.02em;margin-bottom:10px">Let's Get Started</h1>
+          <p style="font-size:15px;opacity:0.85;max-width:520px;margin:0 auto;line-height:1.7">
+            Understanding the 7 types of skin lesions that our AI can detect. Early awareness and recognition are your first line of defence.
+          </p>
+          <div style="display:flex;align-items:center;justify-content:center;gap:24px;margin-top:28px;flex-wrap:wrap">
+            <div style="text-align:center">
+              <div style="font-size:28px;font-weight:700">7</div>
+              <div style="font-size:12px;opacity:0.75;margin-top:2px">Lesion Types</div>
+            </div>
+            <div style="width:1px;height:36px;background:rgba(255,255,255,0.25)"></div>
+            <div style="text-align:center">
+              <div style="font-size:28px;font-weight:700">2</div>
+              <div style="font-size:12px;opacity:0.75;margin-top:2px">High Risk Classes</div>
+            </div>
+            <div style="width:1px;height:36px;background:rgba(255,255,255,0.25)"></div>
+            <div style="text-align:center">
+              <div style="font-size:28px;font-weight:700">5</div>
+              <div style="font-size:12px;opacity:0.75;margin-top:2px">Generally Benign</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Awareness notice -->
+      <div class="card p-5 mb-8 flex gap-4 items-start">
+        <div style="width:40px;height:40px;background:#fef3c7;border-radius:12px;display:flex;align-items:center;justify-content:center;flex-shrink:0">
+          <svg width="20" height="20" fill="none" stroke="#d97706" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+        </div>
+        <div>
+          <p class="text-sm font-semibold mb-1" style="color:var(--text-primary)">Medical Disclaimer</p>
+          <p class="text-sm" style="color:var(--text-secondary)">The information below is for educational purposes only. This tool is for investigational use and cannot replace a qualified dermatologist. Always consult a medical professional for any skin concerns.</p>
+        </div>
+      </div>
+
+      <!-- ── 7 Type Cards ── -->
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:24px">
+
+        <!-- 1. Melanoma (mel) -->
+        <div class="type-card danger">
+          <span class="type-tag danger">
+            <svg width="10" height="10" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/></svg>
+            High Risk
+          </span>
+          <h2 class="type-name">Melanoma <span class="abbr-badge">mel</span></h2>
+          <div class="info-row">
+            <span class="info-pill">Most Dangerous</span>
+            <span class="info-pill">Malignant</span>
+          </div>
+          <p class="type-desc">Melanoma is the most serious form of skin cancer, arising from melanocytes — the cells that produce pigment. It can spread to other organs if not detected early, making early diagnosis critical for survival.</p>
+          <p style="font-size:12px;font-weight:600;color:var(--text-muted);margin-top:14px;text-transform:uppercase;letter-spacing:0.04em">Warning Signs</p>
+          <ul class="sign-list">
+            <li>Asymmetric moles or irregular borders</li>
+            <li>Multiple or uneven colors (brown, black, red, white)</li>
+            <li>Diameter larger than 6mm (size of a pencil eraser)</li>
+            <li>Evolving: changes in size, shape or color over weeks</li>
+          </ul>
+          <div style="margin-top:14px;padding:10px 14px;background:#fff1f2;border-radius:10px;font-size:12px;color:#e11d48;font-weight:500;border:1px solid #fecdd3">
+            ⚑ Seek immediate dermatologist consultation if suspected.
+          </div>
+        </div>
+
+        <!-- 2. Actinic Keratoses / Bowen's (akiec) -->
+        <div class="type-card danger">
+          <span class="type-tag danger">
+            <svg width="10" height="10" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/></svg>
+            High Risk
+          </span>
+          <h2 class="type-name">Actinic Keratoses <span class="abbr-badge">akiec</span></h2>
+          <div class="info-row">
+            <span class="info-pill">Pre-cancerous</span>
+            <span class="info-pill">Bowen's Disease</span>
+          </div>
+          <p class="type-desc">Actinic keratoses (AK) are rough, scaly patches caused by years of sun exposure. They are considered pre-cancerous because they can develop into squamous cell carcinoma. Bowen's disease is a form of carcinoma in situ (early-stage cancer).</p>
+          <p style="font-size:12px;font-weight:600;color:var(--text-muted);margin-top:14px;text-transform:uppercase;letter-spacing:0.04em">Warning Signs</p>
+          <ul class="sign-list">
+            <li>Rough, dry, scaly patch of skin (1–2.5cm)</li>
+            <li>Flat to slightly raised patch, wart-like surface</li>
+            <li>Hard, wartlike surface in some cases</li>
+            <li>Itching, burning or bleeding in the affected area</li>
+          </ul>
+          <div style="margin-top:14px;padding:10px 14px;background:#fff1f2;border-radius:10px;font-size:12px;color:#e11d48;font-weight:500;border:1px solid #fecdd3">
+            ⚑ Early treatment can prevent progression to cancer.
+          </div>
+        </div>
+
+        <!-- 3. Basal Cell Carcinoma (bcc) -->
+        <div class="type-card safe">
+          <span class="type-tag safe">Generally Manageable</span>
+          <h2 class="type-name">Basal Cell Carcinoma <span class="abbr-badge">bcc</span></h2>
+          <div class="info-row">
+            <span class="info-pill">Most Common Cancer</span>
+            <span class="info-pill">Slow Growing</span>
+          </div>
+          <p class="type-desc">The most common type of skin cancer globally, BCC originates in basal cells at the base of the outer skin layer. It rarely spreads to other parts of the body, but early treatment is still important as it can grow deep into surrounding tissues.</p>
+          <p style="font-size:12px;font-weight:600;color:var(--text-muted);margin-top:14px;text-transform:uppercase;letter-spacing:0.04em">Warning Signs</p>
+          <ul class="sign-list">
+            <li>Pearly or waxy bump on the face, ears, or neck</li>
+            <li>Flat, flesh-colored or brown scar-like lesion</li>
+            <li>Bleeding or scabbing sore that heals and returns</li>
+            <li>Pink growth with raised edges and a crusted center</li>
+          </ul>
+        </div>
+
+        <!-- 4. Benign Keratosis (bkl) -->
+        <div class="type-card safe">
+          <span class="type-tag safe">Low Risk</span>
+          <h2 class="type-name">Benign Keratosis <span class="abbr-badge">bkl</span></h2>
+          <div class="info-row">
+            <span class="info-pill">Non-cancerous</span>
+            <span class="info-pill">Common</span>
+          </div>
+          <p class="type-desc">Benign keratoses encompass seborrheic keratoses, solar lentigines (age spots), and lichen-planus-like keratoses. These non-cancerous skin growths are very common and often appear as people age. They do not require treatment unless they are bothersome.</p>
+          <p style="font-size:12px;font-weight:600;color:var(--text-muted);margin-top:14px;text-transform:uppercase;letter-spacing:0.04em">Characteristics</p>
+          <ul class="sign-list">
+            <li>Waxy, stuck-on, wart-like surface appearance</li>
+            <li>Color ranging from light tan to black</li>
+            <li>Round or oval in shape, vary in size</li>
+            <li>May itch but are generally painless</li>
+          </ul>
+        </div>
+
+        <!-- 5. Melanocytic Nevi (nv) -->
+        <div class="type-card safe">
+          <span class="type-tag safe">Low Risk</span>
+          <h2 class="type-name">Melanocytic Nevi <span class="abbr-badge">nv</span></h2>
+          <div class="info-row">
+            <span class="info-pill">Common Moles</span>
+            <span class="info-pill">Benign</span>
+          </div>
+          <p class="type-desc">Commonly known as moles, melanocytic nevi are benign clusters of pigmented cells that appear as small, dark brown spots. Most people have 10–40 of them. They are usually harmless but should be monitored for any changes using the ABCDE rule.</p>
+          <p style="font-size:12px;font-weight:600;color:var(--text-muted);margin-top:14px;text-transform:uppercase;letter-spacing:0.04em">Characteristics</p>
+          <ul class="sign-list">
+            <li>Uniform color — shades of brown, tan or black</li>
+            <li>Symmetrical shape with smooth edges</li>
+            <li>Appear from childhood through early adulthood</li>
+            <li>May fade or disappear with age</li>
+          </ul>
+        </div>
+
+        <!-- 6. Dermatofibroma (df) -->
+        <div class="type-card safe">
+          <span class="type-tag safe">Low Risk</span>
+          <h2 class="type-name">Dermatofibroma <span class="abbr-badge">df</span></h2>
+          <div class="info-row">
+            <span class="info-pill">Benign Nodule</span>
+            <span class="info-pill">Harmless</span>
+          </div>
+          <p class="type-desc">Dermatofibromas are small, firm nodules that form in the skin, most commonly on the lower legs. They are composed of fibrous tissue and are benign. They often result from minor skin trauma such as an insect bite or ingrown hair. Treatment is typically not necessary.</p>
+          <p style="font-size:12px;font-weight:600;color:var(--text-muted);margin-top:14px;text-transform:uppercase;letter-spacing:0.04em">Characteristics</p>
+          <ul class="sign-list">
+            <li>Small, hard, raised growth — typically under 1cm</li>
+            <li>Color from tan to dark brown, may change over time</li>
+            <li>"Dimple sign" — dimples inward when pinched</li>
+            <li>Can be itchy or tender to the touch</li>
+          </ul>
+        </div>
+
+        <!-- 7. Vascular Lesions (vasc) -->
+        <div class="type-card safe" style="grid-column: 1 / -1; max-width: 340px; justify-self: center;">
+          <span class="type-tag safe">Low Risk</span>
+          <h2 class="type-name">Vascular Lesion <span class="abbr-badge">vasc</span></h2>
+          <div class="info-row">
+            <span class="info-pill">Blood Vessel</span>
+            <span class="info-pill">Usually Benign</span>
+          </div>
+          <p class="type-desc">Vascular lesions include cherry angiomas, angiokeratomas, and pyogenic granulomas. They arise from blood vessels in or just below the skin. Most are benign and cosmetic, though some (like pyogenic granulomas) may bleed easily or indicate underlying conditions.</p>
+          <p style="font-size:12px;font-weight:600;color:var(--text-muted);margin-top:14px;text-transform:uppercase;letter-spacing:0.04em">Characteristics</p>
+          <ul class="sign-list">
+            <li>Bright red, purple or blue in color</li>
+            <li>Flat or raised — can be tiny or several cm</li>
+            <li>Often appear after age 30, more common with age</li>
+            <li>May bleed if traumatized (pyogenic granuloma)</li>
+          </ul>
+        </div>
+
+      </div>
+
+      <!-- ABCDE Rule -->
+      <div class="section-divider"></div>
+      <div class="card p-7">
+        <div class="flex items-center gap-3 mb-6">
+          <div style="width:42px;height:42px;background:linear-gradient(135deg,#0d9488,#0f766e);border-radius:12px;display:flex;align-items:center;justify-content:center;flex-shrink:0">
+            <svg width="20" height="20" fill="none" stroke="white" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+          </div>
+          <div>
+            <h3 class="text-lg font-bold" style="color:var(--text-primary)">The ABCDE Rule</h3>
+            <p class="text-sm" style="color:var(--text-muted)">A self-check framework for evaluating suspicious moles</p>
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:14px">
+          {% set abcde = [
+            ('A', 'Asymmetry', 'One half does not match the other in shape.', '#0d9488'),
+            ('B', 'Border', 'Edges are irregular, ragged, notched, or blurred.', '#06b6d4'),
+            ('C', 'Color', 'Variation in color — tan, brown, black, red, white, or blue.', '#8b5cf6'),
+            ('D', 'Diameter', 'Larger than 6mm (about the size of a pencil eraser).', '#f97316'),
+            ('E', 'Evolving', 'Any change in size, shape, color, or a new symptom.', '#e11d48'),
+          ] %}
+          {% for letter, title, desc, color in abcde %}
+          <div style="background:var(--result-bg);border:1px solid var(--card-border);border-radius:14px;padding:16px">
+            <div style="font-size:28px;font-weight:800;color:{{ color }};margin-bottom:6px">{{ letter }}</div>
+            <div style="font-size:13px;font-weight:700;color:var(--text-primary);margin-bottom:4px">{{ title }}</div>
+            <div style="font-size:12px;color:var(--text-secondary);line-height:1.5">{{ desc }}</div>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+
+      <!-- CTA -->
+      <div class="section-divider"></div>
+      <div style="text-align:center;padding-bottom:8px">
+        <p class="text-sm font-medium mb-4" style="color:var(--text-secondary)">Ready to analyze a lesion?</p>
+        <a href="/" style="display:inline-flex;align-items:center;gap:8px;padding:13px 28px;background:linear-gradient(135deg,#0d9488,#0f766e);color:white;font-weight:600;font-size:15px;border-radius:12px;text-decoration:none;box-shadow:0 4px 14px rgba(13,148,136,0.35);transition:all 0.2s" onmouseover="this.style.transform='translateY(-1px)';this.style.boxShadow='0 6px 18px rgba(13,148,136,0.4)'" onmouseout="this.style.transform='';this.style.boxShadow='0 4px 14px rgba(13,148,136,0.35)'">
+          <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
+          Start Analysis
+        </a>
+      </div>
+
+    </div>
+
+    <script>
+      const html = document.documentElement;
+      const iconSun = document.getElementById('iconSun');
+      const iconMoon = document.getElementById('iconMoon');
+      function applyTheme(dark) {
+        if (dark) { html.classList.add('dark'); iconSun.style.display='block'; iconMoon.style.display='none'; }
+        else { html.classList.remove('dark'); iconSun.style.display='none'; iconMoon.style.display='block'; }
+      }
+      function toggleTheme() {
+        const isDark = html.classList.contains('dark');
+        localStorage.setItem('theme', isDark ? 'light' : 'dark');
+        applyTheme(!isDark);
+      }
+      applyTheme(localStorage.getItem('theme') === 'dark');
+    </script>
+  </body>
+</html>

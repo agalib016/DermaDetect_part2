@@ -1,0 +1,253 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Learn — DermaDetect</title>
+    <link rel="icon" type="image/svg+xml" href="/static/favicon.svg" />
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet" />
+    <style>
+      :root {
+        --teal: #0d9488; --teal-dark: #0f766e;
+        --bg: #f0f4f8; --card-bg: #ffffff; --card-border: #e2e8f0;
+        --card-shadow: 0 4px 24px rgba(0,0,0,0.06);
+        --nav-bg: rgba(255,255,255,0.88); --nav-border: #e2e8f0;
+        --text-primary: #1e293b; --text-secondary: #475569; --text-muted: #94a3b8;
+        --result-bg: #f8fafc; --result-border: #f1f5f9;
+        --divider: #e2e8f0; --footer-color: #94a3b8;
+      }
+      html.dark {
+        --bg: #0f172a; --card-bg: #1e293b; --card-border: #334155;
+        --card-shadow: 0 4px 24px rgba(0,0,0,0.3);
+        --nav-bg: rgba(15,23,42,0.92); --nav-border: #334155;
+        --text-primary: #f1f5f9; --text-secondary: #94a3b8; --text-muted: #64748b;
+        --result-bg: #0f172a; --result-border: #334155;
+        --divider: #334155; --footer-color: #475569;
+      }
+      * { font-family: "DM Sans", sans-serif; }
+      body { background: var(--bg); transition: background 0.3s; }
+
+      .top-nav {
+        position: fixed; top: 0; left: 0; right: 0; z-index: 50;
+        background: var(--nav-bg); backdrop-filter: blur(16px);
+        -webkit-backdrop-filter: blur(16px);
+        border-bottom: 1px solid var(--nav-border);
+        padding: 10px 20px;
+        display: flex; align-items: center; justify-content: space-between;
+        transition: background 0.3s, border-color 0.3s;
+      }
+      .nav-left { display: flex; align-items: center; gap: 8px; }
+      .nav-avatar {
+        width: 32px; height: 32px; border-radius: 10px;
+        background: linear-gradient(135deg,#0d9488,#0f766e);
+        display: flex; align-items: center; justify-content: center;
+        color: white; font-weight: 700; font-size: 12px;
+      }
+      .nav-name { font-size: 14px; font-weight: 500; color: var(--text-primary); }
+      .nav-right { display: flex; align-items: center; gap: 6px; }
+      .nav-link {
+        display: inline-flex; align-items: center; gap: 5px;
+        padding: 6px 13px; border-radius: 9px; font-size: 13px; font-weight: 500;
+        color: var(--text-secondary); text-decoration: none;
+        border: 1px solid transparent; transition: all 0.18s;
+      }
+      .nav-link:hover { background: var(--result-bg); border-color: var(--card-border); color: var(--teal); }
+      .nav-link. { background: #f0fdfa; color: var(--teal); border-color: #99f6e4; }
+      html.dark .nav-link. { background: rgba(13,148,136,0.15); border-color: rgba(13,148,136,0.35); }
+      .theme-btn {
+        width: 34px; height: 34px; border-radius: 9px;
+        border: 1px solid var(--card-border); background: var(--result-bg);
+        color: var(--text-secondary); cursor: pointer;
+        display: flex; align-items: center; justify-content: center; transition: all 0.18s;
+      }
+      .theme-btn:hover { color: var(--teal); border-color: var(--teal); }
+      .nav-logout {
+        display: inline-flex; align-items: center; gap: 5px;
+        padding: 6px 13px; border-radius: 9px; font-size: 13px; font-weight: 600;
+        color: var(--text-muted); text-decoration: none;
+        border: 1px solid var(--card-border); background: var(--result-bg); transition: all 0.18s;
+      }
+      .nav-logout:hover { background: #fee2e2; color: #dc2626; border-color: #fecaca; }
+
+      .card { background: var(--card-bg); border-radius: 20px; border: 1px solid var(--card-border); box-shadow: var(--card-shadow); transition: background 0.3s, border-color 0.3s; }
+
+      /* Type cards */
+      .type-card {
+        background: var(--card-bg);
+        border: 1px solid var(--card-border);
+        border-radius: 20px;
+        padding: 28px;
+        box-shadow: var(--card-shadow);
+        transition: all 0.25s;
+        position: relative;
+        overflow: hidden;
+      }
+      .type-card:hover { transform: translateY(-3px); box-shadow: 0 12px 32px rgba(0,0,0,0.1); }
+      .type-card::before {
+        content: '';
+        position: absolute; top: 0; left: 0; right: 0; height: 4px;
+        border-radius: 20px 20px 0 0;
+      }
+      .type-card.safe::before { background: linear-gradient(90deg, #0d9488, #06b6d4); }
+      .type-card.danger::before { background: linear-gradient(90deg, #e11d48, #f97316); }
+
+      .type-tag {
+        display: inline-flex; align-items: center; gap: 5px;
+        padding: 3px 10px; border-radius: 6px;
+        font-size: 11px; font-weight: 700; letter-spacing: 0.06em;
+        text-transform: uppercase; margin-bottom: 12px;
+      }
+      .type-tag.safe { background: #f0fdfa; color: #0d9488; border: 1px solid #99f6e4; }
+      .type-tag.danger { background: #fff1f2; color: #e11d48; border: 1px solid #fecdd3; }
+      html.dark .type-tag.safe { background: rgba(13,148,136,0.15); border-color: rgba(13,148,136,0.35); }
+      html.dark .type-tag.danger { background: rgba(225,29,72,0.12); border-color: rgba(225,29,72,0.35); }
+
+      .abbr-badge {
+        display: inline-block;
+        padding: 2px 8px; border-radius: 5px;
+        font-family: 'DM Mono', monospace; font-size: 11px; font-weight: 500;
+        background: var(--result-bg); color: var(--text-muted);
+        border: 1px solid var(--card-border); margin-left: 8px;
+      }
+
+      .info-row { display: flex; gap: 8px; margin-top: 8px; flex-wrap: wrap; }
+      .info-pill {
+        display: inline-flex; align-items: center; gap: 5px;
+        padding: 4px 10px; border-radius: 8px;
+        font-size: 12px; font-weight: 500;
+        background: var(--result-bg); color: var(--text-secondary);
+        border: 1px solid var(--card-border);
+      }
+
+      .sign-list { list-style: none; margin-top: 12px; }
+      .sign-list li {
+        display: flex; align-items: flex-start; gap: 8px;
+        font-size: 13px; color: var(--text-secondary);
+        padding: 4px 0;
+      }
+      .sign-list li::before {
+        content: '';
+        width: 6px; height: 6px; border-radius: 50%;
+        background: var(--teal); margin-top: 5px; flex-shrink: 0;
+      }
+      .type-card.danger .sign-list li::before { background: #e11d48; }
+
+      h2.type-name { font-size: 20px; font-weight: 700; color: var(--text-primary); margin-bottom: 4px; }
+      p.type-desc { font-size: 13px; color: var(--text-secondary); line-height: 1.65; margin-top: 10px; }
+
+      .section-divider { height: 1px; background: linear-gradient(to right, transparent, var(--divider), transparent); margin: 32px 0; }
+
+      /* Hero */
+      .hero-card {
+        background: linear-gradient(135deg, #0d9488 0%, #0f766e 50%, #065f46 100%);
+        border-radius: 24px; padding: 48px 40px;
+        color: white; text-align: center; position: relative; overflow: hidden;
+        margin-bottom: 40px;
+      }
+      .hero-card::before {
+        content: ''; position: absolute; top: -60px; right: -60px;
+        width: 220px; height: 220px; border-radius: 50%;
+        background: rgba(255,255,255,0.06);
+      }
+      .hero-card::after {
+        content: ''; position: absolute; bottom: -80px; left: -40px;
+        width: 280px; height: 280px; border-radius: 50%;
+        background: rgba(255,255,255,0.04);
+      }
+    </style>
+  </head>
+
+  <body class="min-h-screen pt-20 pb-16 px-4">
+
+    <!-- Nav -->
+    {% if user and user.is_authenticated %}
+    <nav class="top-nav">
+      <div class="nav-left">
+        <div class="nav-avatar">
+          {% if user.avatar_url %}
+          <img src="{{ user.avatar_url }}" alt="Profile" style="width:100%;height:100%;border-radius:10px;object-fit:cover;">
+          {% else %}
+          {{ user.first_name[0] }}{{ user.last_name[0] }}
+          {% endif %}
+        </div>
+        <a href="/account" class="nav-name" style="text-decoration:none;">{{ user.first_name }} {{ user.last_name }}</a>
+      </div>
+      <div class="nav-right">
+        <a href="/" class="nav-link" style="background:var(--teal);color:white;border:none;box-shadow:0 4px 12px rgba(13,148,136,0.3);">
+          <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
+          Analyze
+        </a>
+        <a href="/get-started" class="nav-link ">
+          <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+          Get Started
+        </a>
+        <a href="/explore" class="nav-link">
+          <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9" /></svg>
+          Explore DermaDetect
+        </a>
+        <a href="/articles" class="nav-link">
+          <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z" /></svg>
+          active">
+          <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z" /></svg>
+          Skin Health Articles
+        </a>
+        <a href="/dashboard" class="nav-link">
+          <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16"/></svg>
+          Dashboard
+        </a>
+        <button class="theme-btn" id="themeToggle" title="Toggle dark mode" onclick="toggleTheme()">
+          <svg id="iconSun" width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="display:none"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364-6.364l-.707.707M6.343 17.657l-.707.707M17.657 17.657l-.707-.707M6.343 6.343l-.707-.707M12 8a4 4 0 100 8 4 4 0 000-8z"/></svg>
+          <svg id="iconMoon" width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"/></svg>
+        </button>
+        <a href="/logout" class="nav-logout">
+          <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg>
+          Sign Out
+        </a>
+      </div>
+    </nav>
+    {% endif %}
+
+    
+    <div class="max-w-4xl mx-auto">
+      <div class="hero-card" style="margin-bottom: 40px;">
+        <h1 style="font-size:28px;font-weight:700;margin-bottom:10px;position:relative;z-index:1;">Skin Health Articles</h1>
+        <p style="font-size:15px;opacity:0.85;position:relative;z-index:1;">Read up on the latest in skin health, UV protection, and dermatology.</p>
+      </div>
+      
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div class="card p-6">
+          <h3 class="font-bold text-lg mb-2" style="color:var(--text-primary)">The Importance of SPF</h3>
+          <p class="text-sm mb-4" style="color:var(--text-secondary)">Discover why daily sunscreen application is the most effective anti-aging and cancer-prevention routine.</p>
+          <a href="#" class="text-teal-600 font-semibold text-sm">Read more &rarr;</a>
+        </div>
+        <div class="card p-6">
+          <h3 class="font-bold text-lg mb-2" style="color:var(--text-primary)">Understanding Moles vs Melanoma</h3>
+          <p class="text-sm mb-4" style="color:var(--text-secondary)">A deep dive into the ABCDE rule and how to track changes in your skin over time.</p>
+          <a href="#" class="text-teal-600 font-semibold text-sm">Read more &rarr;</a>
+        </div>
+        <div class="card p-6">
+          <h3 class="font-bold text-lg mb-2" style="color:var(--text-primary)">Diet and Skin Health</h3>
+          <p class="text-sm mb-4" style="color:var(--text-secondary)">How antioxidants, hydration, and a balanced diet contribute to your skin's natural glow.</p>
+          <a href="#" class="text-teal-600 font-semibold text-sm">Read more &rarr;</a>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      const html = document.documentElement;
+      const iconSun = document.getElementById('iconSun');
+      const iconMoon = document.getElementById('iconMoon');
+      function applyTheme(dark) {
+        if (dark) { html.classList.add('dark'); iconSun.style.display='block'; iconMoon.style.display='none'; }
+        else { html.classList.remove('dark'); iconSun.style.display='none'; iconMoon.style.display='block'; }
+      }
+      function toggleTheme() {
+        const isDark = html.classList.contains('dark');
+        localStorage.setItem('theme', isDark ? 'light' : 'dark');
+        applyTheme(!isDark);
+      }
+      applyTheme(localStorage.getItem('theme') === 'dark');
+    </script>
+  </body>
+</html>

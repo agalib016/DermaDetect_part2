@@ -3,11 +3,14 @@ import pickle
 import numpy as np
 from datetime import datetime
 from flask import Flask, request, jsonify, render_template, redirect, url_for, flash
+from werkzeug.utils import secure_filename
 from PIL import Image
 import tensorflow
-from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager, UserMixin, login_user, logout_user, login_required, current_user
 from werkzeug.security import generate_password_hash, check_password_hash
+import firebase_admin
+from firebase_admin import credentials
+from firebase_admin import firestore
 
 try:
     from tensorflow.keras.models import load_model
@@ -16,28 +19,58 @@ except Exception:
     from keras.models import load_model
     from keras.layers import DepthwiseConv2D as BaseDepthwiseConv2D
 
-app = Flask(__name__)
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
+app = Flask(
+    __name__,
+    template_folder=os.path.join(BASE_DIR, "templates"),
+    static_folder=os.path.join(BASE_DIR, "static"),
+    static_url_path="/static",
+)
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'skincancer-ai-secret-key-change-in-production')
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + os.path.join(os.path.dirname(os.path.abspath(__file__)), 'users.db')
-app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 # ── Database & Login Manager ──────────────────────────────────────────────────
-db = SQLAlchemy(app)
+db = None
+try:
+    if not firebase_admin._apps:
+        firebase_creds_raw = os.environ.get("FIREBASE_SERVICE_ACCOUNT_KEY") or os.environ.get("FIREBASE_SERVICE_ACCOUNT")
+        if firebase_creds_raw:
+            import json, base64
+            cleaned = firebase_creds_raw.strip()
+            if not cleaned.startswith("{"):
+                cleaned = base64.b64decode(cleaned).decode("utf-8")
+            cred_dict = json.loads(cleaned)
+            cred = credentials.Certificate(cred_dict)
+            firebase_admin.initialize_app(cred)
+        else:
+            cert_path = os.path.join(BASE_DIR, "serviceAccountKey.json")
+            if os.path.exists(cert_path):
+                cred = credentials.Certificate(cert_path)
+                firebase_admin.initialize_app(cred)
+            else:
+                print("[WARN] No Firebase credentials found. Provide FIREBASE_SERVICE_ACCOUNT_KEY or serviceAccountKey.json.")
+    if firebase_admin._apps:
+        db = firestore.client()
+        print("[INFO] Connected to Firebase Firestore")
+except Exception as e:
+    print(f"[ERROR] Firebase initialization error: {e}")
+
 login_manager = LoginManager(app)
 login_manager.login_view = 'login'
 login_manager.login_message = 'Please sign in to access the diagnostics tool.'
 login_manager.login_message_category = 'error'
 
 
-class User(UserMixin, db.Model):
+class User(UserMixin):
     """User model for authentication."""
-    __tablename__ = 'users'
-    id = db.Column(db.Integer, primary_key=True)
-    first_name = db.Column(db.String(80), nullable=False)
-    last_name = db.Column(db.String(80), nullable=False)
-    email = db.Column(db.String(120), unique=True, nullable=False, index=True)
-    password_hash = db.Column(db.String(256), nullable=False)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    def __init__(self, user_id, email, first_name, last_name, password_hash, created_at=None, avatar_url=None):
+        self.id = user_id
+        self.email = email
+        self.first_name = first_name
+        self.last_name = last_name
+        self.password_hash = password_hash
+        self.avatar_url = avatar_url
+        self.created_at = created_at or datetime.utcnow()
 
     def set_password(self, password):
         self.password_hash = generate_password_hash(password)
@@ -45,20 +78,72 @@ class User(UserMixin, db.Model):
     def check_password(self, password):
         return check_password_hash(self.password_hash, password)
 
+    @staticmethod
+    def get_by_email(email):
+        if db is None:
+            return None
+        users_ref = db.collection('users')
+        query = users_ref.where('email', '==', email).limit(1).get()
+        if query:
+            doc = query[0]
+            data = doc.to_dict()
+            return User(
+                user_id=doc.id,
+                email=data.get('email'),
+                first_name=data.get('first_name'),
+                last_name=data.get('last_name'),
+                password_hash=data.get('password_hash'),
+                created_at=data.get('created_at'),
+                avatar_url=data.get('avatar_url')
+            )
+        return None
+
+    @staticmethod
+    def get_by_id(user_id):
+        if db is None:
+            return None
+        doc_ref = db.collection('users').document(str(user_id))
+        doc = doc_ref.get()
+        if doc.exists:
+            data = doc.to_dict()
+            return User(
+                user_id=doc.id,
+                email=data.get('email'),
+                first_name=data.get('first_name'),
+                last_name=data.get('last_name'),
+                password_hash=data.get('password_hash'),
+                created_at=data.get('created_at'),
+                avatar_url=data.get('avatar_url')
+            )
+        return None
+
+    def save(self):
+        if db is None:
+            print("[WARN] Firestore not connected; cannot save user.")
+            return
+        doc_ref = db.collection('users').document(str(self.id)) if self.id else db.collection('users').document()
+        if not self.id:
+            self.id = doc_ref.id
+        doc_ref.set({
+            'email': self.email,
+            'first_name': self.first_name,
+            'last_name': self.last_name,
+            'password_hash': self.password_hash,
+            'avatar_url': self.avatar_url,
+            'created_at': self.created_at
+        })
+
 
 @login_manager.user_loader
 def load_user(user_id):
-    return db.session.get(User, int(user_id))
+    return User.get_by_id(user_id)
 
 
-# Create tables
-with app.app_context():
-    db.create_all()
-    print("[INFO] Database initialized (users.db)")
-
-
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 MODEL_CANDIDATES = [
+    # EfficientNetB3 (v2.0 — highest accuracy, trained with train_unified_model.py)
+    os.path.join(BASE_DIR, "skin-cancer-7-classes_EfficientNetB3_Unified.keras"),
+    # MobileNetV2 fallbacks (v1.x — used if EfficientNetB3 not yet trained)
+    os.path.join(BASE_DIR, "skin-cancer-7-classes_Unified_MobileNet.keras"),
     os.path.join(BASE_DIR, "skin-cancer-7-classes_MobileNet_ph2_model.keras"),
     os.path.join(BASE_DIR, "skin-cancer-7-classes_MobileNet_ph1_model.keras"),
     os.path.join(BASE_DIR, "MobileNet.h5"),
@@ -141,17 +226,6 @@ else:
 
 
 def _load_gatekeeper(path):
-    """
-    Load gatekeeper_model.keras which was saved with an early Keras 3 that stored:
-      - config.json  using old module path keras.src.engine.functional
-      - model.weights.h5  using Keras-3 class-type positional keys (e.g. conv2d/vars/0)
-
-    Strategy:
-      1. Build the tf_keras model using from_config (handles TFOpLambda & old config).
-      2. Walk the layer tree in creation order; resolve each layer's H5 key by
-         class-name counter (BatchNormalization → batch_normalization, Conv2D → conv2d …).
-      3. Assign weights values directly – bypasses the naming-format mismatch.
-    """
     import zipfile, json, re, tempfile, shutil, h5py
     import tf_keras as _tf_keras
 
@@ -169,7 +243,7 @@ def _load_gatekeeper(path):
             )
             if is_container:
                 if not any(getattr(l, "variables", None) for l in sub_layers):
-                    continue  # e.g. augmentation Sequential (no weights)
+                    continue
                 cnt = counters.get(cls_key, 0)
                 sub_prefix = f"{prefix}/{cls_key}" + (f"_{cnt}" if cnt > 0 else "")
                 counters[cls_key] = cnt + 1
@@ -185,7 +259,6 @@ def _load_gatekeeper(path):
 
     tmpdir = tempfile.mkdtemp()
     try:
-        # Extract config + weights from the .keras ZIP
         with zipfile.ZipFile(path, "r") as zf:
             cfg_raw = zf.read("config.json").decode("utf-8")
             zf.extract("model.weights.h5", tmpdir)
@@ -259,7 +332,6 @@ def predict_skin_probability(img_array):
 
 @app.route("/register", methods=["GET", "POST"])
 def register():
-    """User registration."""
     if current_user.is_authenticated:
         return redirect(url_for('home'))
 
@@ -270,7 +342,6 @@ def register():
         password = request.form.get("password", "")
         confirm_password = request.form.get("confirm_password", "")
 
-        # Validation
         if not all([first_name, last_name, email, password]):
             flash("All fields are required.", "error")
             return redirect(url_for('register'))
@@ -283,19 +354,13 @@ def register():
             flash("Passwords do not match.", "error")
             return redirect(url_for('register'))
 
-        if User.query.filter_by(email=email).first():
+        if User.get_by_email(email):
             flash("An account with this email already exists.", "error")
             return redirect(url_for('register'))
 
-        # Create user
-        user = User(
-            first_name=first_name,
-            last_name=last_name,
-            email=email,
-        )
+        user = User(user_id=None, first_name=first_name, last_name=last_name, email=email, password_hash="")
         user.set_password(password)
-        db.session.add(user)
-        db.session.commit()
+        user.save()
 
         flash("Account created successfully! Please sign in.", "success")
         return redirect(url_for('login'))
@@ -305,7 +370,6 @@ def register():
 
 @app.route("/login", methods=["GET", "POST"])
 def login():
-    """User login."""
     if current_user.is_authenticated:
         return redirect(url_for('home'))
 
@@ -313,7 +377,7 @@ def login():
         email = request.form.get("email", "").strip().lower()
         password = request.form.get("password", "")
 
-        user = User.query.filter_by(email=email).first()
+        user = User.get_by_email(email)
 
         if user is None or not user.check_password(password):
             flash("Invalid email or password.", "error")
@@ -321,7 +385,7 @@ def login():
 
         login_user(user, remember=True)
         next_page = request.args.get('next')
-        return redirect(next_page or url_for('home'))
+        return redirect(next_page or url_for('get_started'))
 
     return render_template("login.html")
 
@@ -329,7 +393,6 @@ def login():
 @app.route("/logout")
 @login_required
 def logout():
-    """User logout."""
     logout_user()
     flash("You have been signed out.", "success")
     return redirect(url_for('login'))
@@ -346,6 +409,50 @@ def home():
     loc_options = list(loc_encoder.classes_) if loc_encoder else []
     return render_template(
         "index.html", sex_options=sex_options, loc_options=loc_options, user=current_user
+    )
+
+
+@app.route("/get-started")
+@login_required
+def get_started():
+    """Awareness page about the 7 skin cancer types."""
+    return render_template("get-started.html", user=current_user)
+
+
+@app.route("/dashboard")
+@login_required
+def dashboard():
+    """User's prediction history dashboard."""
+    query = []
+    if db is not None:
+        predictions_ref = db.collection('predictions')
+        query = predictions_ref.where('user_id', '==', str(current_user.id)).get()
+    
+    class PredictionWrapper:
+        def __init__(self, data):
+            self.patient_age = data.get('patient_age')
+            self.patient_sex = data.get('patient_sex')
+            self.localization = data.get('localization')
+            self.predicted_class = data.get('predicted_class')
+            self.predicted_class_full = data.get('predicted_class_full')
+            self.confidence = data.get('confidence')
+            self.is_dangerous = data.get('is_dangerous')
+            self.gatekeeper_passed = data.get('gatekeeper_passed')
+            self.created_at = data.get('created_at')
+
+    predictions = [PredictionWrapper(doc.to_dict()) for doc in query]
+    # Sort predictions in Python to avoid needing a Firestore composite index
+    predictions.sort(key=lambda p: p.created_at, reverse=True)
+    total = len(predictions)
+    dangerous_count = sum(1 for p in predictions if p.is_dangerous)
+    safe_count = total - dangerous_count
+    return render_template(
+        "dashboard.html",
+        user=current_user,
+        predictions=predictions,
+        total=total,
+        dangerous_count=dangerous_count,
+        safe_count=safe_count,
     )
 
 
@@ -414,12 +521,28 @@ def predict():
             CLASSES[i]: float(predictions[i] * 100) for i in range(len(CLASSES))
         }
 
+        # ── Save prediction to database ───────────────────────────────────────
+        try:
+            record_data = {
+                'user_id': str(current_user.id),
+                'patient_age': age,
+                'patient_sex': sex,
+                'localization': localization,
+                'predicted_class': predicted_class,
+                'predicted_class_full': CLASSES_FULL.get(predicted_class, predicted_class),
+                'confidence': round(confidence, 2),
+                'is_dangerous': is_dangerous,
+                'gatekeeper_passed': True if skin_prob is not None else None,
+                'created_at': datetime.utcnow()
+            }
+            db.collection('predictions').add(record_data)
+        except Exception as db_err:
+            print(f"[WARN] Could not save prediction to DB: {db_err}")
+
         return jsonify(
             {
                 "predicted_class": predicted_class,
-                "predicted_class_full": CLASSES_FULL.get(
-                    predicted_class, predicted_class
-                ),
+                "predicted_class_full": CLASSES_FULL.get(predicted_class, predicted_class),
                 "confidence": round(confidence, 2),
                 "is_dangerous": is_dangerous,
                 "all_probabilities": all_probs,
@@ -440,7 +563,6 @@ def predict():
 
 @app.route("/health")
 def health():
-    """Health check endpoint for monitoring and CI."""
     return jsonify(
         {
             "status": "ok",
@@ -460,7 +582,6 @@ def health():
 @app.route("/api/classes")
 @login_required
 def api_classes():
-    """Return available lesion classes and metadata."""
     sex_options = (
         list(sex_encoder.classes_) if sex_encoder else ["male", "female", "unknown"]
     )
@@ -468,21 +589,9 @@ def api_classes():
         list(loc_encoder.classes_)
         if loc_encoder
         else [
-            "abdomen",
-            "acral",
-            "back",
-            "chest",
-            "ear",
-            "face",
-            "foot",
-            "genital",
-            "hand",
-            "lower extremity",
-            "neck",
-            "scalp",
-            "trunk",
-            "upper extremity",
-            "unknown",
+            "abdomen", "acral", "back", "chest", "ear", "face", "foot",
+            "genital", "hand", "lower extremity", "neck", "scalp",
+            "trunk", "upper extremity", "unknown",
         ]
     )
     return jsonify(
@@ -494,6 +603,71 @@ def api_classes():
             "localization_options": loc_options,
         }
     )
+
+@app.route("/explore")
+@login_required
+def explore():
+    return render_template("explore.html", user=current_user)
+
+@app.route("/articles")
+@login_required
+def articles():
+    return render_template("articles.html", user=current_user)
+
+@app.route("/account", methods=["GET", "POST"])
+@login_required
+def account():
+    if request.method == "POST":
+        first_name = request.form.get("first_name", "").strip()
+        last_name = request.form.get("last_name", "").strip()
+        
+        if first_name and last_name:
+            current_user.first_name = first_name
+            current_user.last_name = last_name
+
+        if "profile_picture" in request.files:
+            file = request.files["profile_picture"]
+            if file and file.filename != "":
+                try:
+                    # In serverless environments like Vercel, the filesystem is read-only.
+                    # Storing avatar as base64 Data URL avoids filesystem errors and persists across serverless instances.
+                    import base64
+                    file_bytes = file.read()
+                    mime_type = file.mimetype or "image/jpeg"
+                    b64_str = base64.b64encode(file_bytes).decode("utf-8")
+                    current_user.avatar_url = f"data:{mime_type};base64,{b64_str}"
+                except Exception as upload_err:
+                    print(f"[WARN] Profile picture upload error: {upload_err}")
+
+        current_user.save()
+        flash("Profile updated successfully.", "success")
+        return redirect(url_for("account"))
+
+    return render_template("account.html", user=current_user)
+
+@app.route("/delete_account", methods=["POST"])
+@login_required
+def delete_account():
+    password = request.form.get("password", "")
+    if not current_user.check_password(password):
+        flash("Incorrect password. Account deletion failed.", "error")
+        return redirect(url_for("account"))
+    
+    user_id = str(current_user.id)
+    
+    if db is not None:
+        # Delete predictions
+        predictions_ref = db.collection('predictions')
+        query = predictions_ref.where('user_id', '==', user_id).get()
+        for doc in query:
+            db.collection('predictions').document(doc.id).delete()
+        
+        # Delete user
+        db.collection('users').document(user_id).delete()
+    
+    logout_user()
+    flash("Your account has been successfully deleted.", "success")
+    return redirect(url_for("login"))
 
 
 if __name__ == "__main__":

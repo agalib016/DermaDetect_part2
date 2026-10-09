@@ -1,646 +1,991 @@
 <!doctype html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>SkinCancer AI - Professional Dermatological Diagnostics</title>
-    <link rel="icon" type="image/svg+xml" href="/static/favicon.svg" />
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <link
-      href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap"
-      rel="stylesheet"
-    />
-    <style>
-      :root {
-        --teal: #0d9488;
-        --teal-dark: #0f766e;
-        --rose: #e11d48;
-        --surface: #f8fafc;
-        --border: #e2e8f0;
-      }
-      * {
-        font-family: "DM Sans", sans-serif;
-      }
-      body {
-        background: #f0f4f8;
-      }
 
-      .card {
-        background: white;
-        border-radius: 20px;
-        border: 1px solid var(--border);
-        box-shadow: 0 4px 24px rgba(0, 0, 0, 0.06);
-      }
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>DermaDetect - Professional Dermatological Diagnostics</title>
+  <link rel="icon" type="image/svg+xml" href="/static/favicon.svg" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <link
+    href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap"
+    rel="stylesheet" />
+  <style>
+    /* ── Light/Dark CSS variables ── */
+    :root {
+      --teal: #0d9488;
+      --teal-dark: #0f766e;
+      --rose: #e11d48;
 
-      .drag-active {
-        border-color: var(--teal) !important;
-        background-color: #f0fdfa !important;
-      }
+      --bg: #f0f4f8;
+      --card-bg: #ffffff;
+      --card-border: #e2e8f0;
+      --card-shadow: 0 4px 24px rgba(0, 0, 0, 0.06);
 
-      .input-field {
-        width: 100%;
-        padding: 10px 14px;
-        border: 1.5px solid var(--border);
-        border-radius: 10px;
-        font-size: 14px;
-        color: #1e293b;
-        background: #f8fafc;
-        transition:
-          border-color 0.2s,
-          box-shadow 0.2s;
-        outline: none;
-        appearance: none;
-        -webkit-appearance: none;
-      }
-      .input-field:focus {
-        border-color: var(--teal);
-        box-shadow: 0 0 0 3px rgba(13, 148, 136, 0.12);
-        background: white;
-      }
+      --nav-bg: rgba(255, 255, 255, 0.88);
+      --nav-border: #e2e8f0;
 
-      select.input-field {
-        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2.5'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
-        background-repeat: no-repeat;
-        background-position: right 14px center;
-        padding-right: 36px;
-        cursor: pointer;
-      }
+      --text-primary: #1e293b;
+      --text-secondary: #475569;
+      --text-muted: #94a3b8;
 
-      .label {
-        font-size: 13px;
-        font-weight: 600;
-        color: #475569;
-        margin-bottom: 6px;
-        display: block;
-        letter-spacing: 0.02em;
-      }
+      --input-bg: #f8fafc;
+      --input-border: #e2e8f0;
+      --input-color: #1e293b;
 
-      .btn-analyze {
-        width: 100%;
-        padding: 14px;
-        background: linear-gradient(135deg, #0d9488, #0f766e);
-        color: white;
-        font-weight: 600;
-        font-size: 15px;
-        border-radius: 12px;
-        border: none;
-        cursor: pointer;
-        transition: all 0.2s;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        gap: 10px;
-        letter-spacing: 0.02em;
-        box-shadow: 0 4px 14px rgba(13, 148, 136, 0.35);
-      }
-      .btn-analyze:hover {
-        transform: translateY(-1px);
-        box-shadow: 0 6px 18px rgba(13, 148, 136, 0.4);
-      }
-      .btn-analyze:active {
-        transform: translateY(0);
-      }
-      .btn-analyze:disabled {
-        opacity: 0.65;
-        cursor: not-allowed;
-        transform: none;
-      }
+      --result-bg: #f8fafc;
+      --result-border: #f1f5f9;
 
-      .result-fade {
-        opacity: 0;
-        transform: translateY(12px);
-        transition:
-          opacity 0.45s ease,
-          transform 0.45s ease;
-      }
-      .result-fade.visible {
-        opacity: 1;
-        transform: translateY(0);
-      }
+      --divider: #e2e8f0;
+      --footer-color: #94a3b8;
+    }
 
-      .danger-badge {
-        display: inline-flex;
-        align-items: center;
-        gap: 6px;
-        background: #fff1f2;
-        color: var(--rose);
-        border: 1px solid #fecdd3;
-        border-radius: 8px;
-        padding: 4px 12px;
-        font-size: 12px;
-        font-weight: 600;
-        letter-spacing: 0.04em;
-      }
-      .safe-badge {
-        display: inline-flex;
-        align-items: center;
-        gap: 6px;
-        background: #f0fdfa;
-        color: var(--teal);
-        border: 1px solid #99f6e4;
-        border-radius: 8px;
-        padding: 4px 12px;
-        font-size: 12px;
-        font-weight: 600;
-        letter-spacing: 0.04em;
-      }
+    html.dark {
+      --bg: #0f172a;
+      --card-bg: #1e293b;
+      --card-border: #334155;
+      --card-shadow: 0 4px 24px rgba(0, 0, 0, 0.3);
 
-      .spinner {
-        width: 18px;
-        height: 18px;
-        border: 2.5px solid rgba(255, 255, 255, 0.35);
-        border-top-color: white;
-        border-radius: 50%;
-        animation: spin 0.7s linear infinite;
-      }
-      @keyframes spin {
-        to {
-          transform: rotate(360deg);
-        }
-      }
+      --nav-bg: rgba(15, 23, 42, 0.92);
+      --nav-border: #334155;
 
-      .section-divider {
-        height: 1px;
-        background: linear-gradient(
-          to right,
-          transparent,
-          var(--border),
-          transparent
-        );
-        margin: 28px 0;
+      --text-primary: #f1f5f9;
+      --text-secondary: #94a3b8;
+      --text-muted: #64748b;
+
+      --input-bg: #0f172a;
+      --input-border: #334155;
+      --input-color: #e2e8f0;
+
+      --result-bg: #0f172a;
+      --result-border: #334155;
+
+      --divider: #334155;
+      --footer-color: #475569;
+    }
+
+    * {
+      font-family: "DM Sans", sans-serif;
+    }
+
+    body {
+      background: var(--bg);
+      transition: background 0.3s;
+    }
+
+    /* ── Top nav ── */
+    .top-nav {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      z-index: 50;
+      background: var(--nav-bg);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border-bottom: 1px solid var(--nav-border);
+      padding: 10px 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      transition: background 0.3s, border-color 0.3s;
+    }
+
+    .nav-left {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .nav-avatar {
+      width: 32px;
+      height: 32px;
+      border-radius: 10px;
+      background: linear-gradient(135deg, #0d9488, #0f766e);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-weight: 700;
+      font-size: 12px;
+      flex-shrink: 0;
+    }
+
+    .nav-name {
+      font-size: 14px;
+      font-weight: 500;
+      color: var(--text-primary);
+      transition: color 0.3s;
+    }
+
+    .nav-right {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .nav-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 6px 13px;
+      border-radius: 9px;
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--text-secondary);
+      text-decoration: none;
+      border: 1px solid transparent;
+      transition: all 0.18s;
+      white-space: nowrap;
+    }
+
+    .nav-link:hover {
+      background: var(--result-bg);
+      border-color: var(--card-border);
+      color: var(--teal);
+    }
+
+    .nav-link.active {
+      background: #f0fdfa;
+      color: var(--teal);
+      border-color: #99f6e4;
+    }
+
+    html.dark .nav-link.active {
+      background: rgba(13, 148, 136, 0.15);
+      border-color: rgba(13, 148, 136, 0.35);
+    }
+
+    /* Dark mode toggle */
+    .theme-btn {
+      width: 34px;
+      height: 34px;
+      border-radius: 9px;
+      border: 1px solid var(--card-border);
+      background: var(--result-bg);
+      color: var(--text-secondary);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.18s;
+    }
+
+    .theme-btn:hover {
+      color: var(--teal);
+      border-color: var(--teal);
+    }
+
+    /* Logout btn */
+    .nav-logout {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 6px 13px;
+      border-radius: 9px;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-muted);
+      text-decoration: none;
+      border: 1px solid var(--card-border);
+      background: var(--result-bg);
+      transition: all 0.18s;
+    }
+
+    .nav-logout:hover {
+      background: #fee2e2;
+      color: #dc2626;
+      border-color: #fecaca;
+    }
+
+    /* ── Cards ── */
+    .card {
+      background: var(--card-bg);
+      border-radius: 20px;
+      border: 1px solid var(--card-border);
+      box-shadow: var(--card-shadow);
+      transition: background 0.3s, border-color 0.3s;
+    }
+
+    /* ── Form inputs ── */
+    .drag-active {
+      border-color: var(--teal) !important;
+      background-color: #f0fdfa !important;
+    }
+
+    html.dark .drag-active {
+      background-color: rgba(13, 148, 136, 0.1) !important;
+    }
+
+    .input-field {
+      width: 100%;
+      padding: 10px 14px;
+      border: 1.5px solid var(--input-border);
+      border-radius: 10px;
+      font-size: 14px;
+      color: var(--input-color);
+      background: var(--input-bg);
+      transition: border-color 0.2s, box-shadow 0.2s, background 0.3s, color 0.3s;
+      outline: none;
+      appearance: none;
+      -webkit-appearance: none;
+    }
+
+    .input-field:focus {
+      border-color: var(--teal);
+      box-shadow: 0 0 0 3px rgba(13, 148, 136, 0.12);
+      background: var(--card-bg);
+    }
+
+    select.input-field {
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2.5'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 14px center;
+      padding-right: 36px;
+      cursor: pointer;
+    }
+
+    .label {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-secondary);
+      margin-bottom: 6px;
+      display: block;
+      letter-spacing: 0.02em;
+      transition: color 0.3s;
+    }
+
+    /* ── Buttons ── */
+    .btn-analyze {
+      width: 100%;
+      padding: 14px;
+      background: linear-gradient(135deg, #0d9488, #0f766e);
+      color: white;
+      font-weight: 600;
+      font-size: 15px;
+      border-radius: 12px;
+      border: none;
+      cursor: pointer;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      letter-spacing: 0.02em;
+      box-shadow: 0 4px 14px rgba(13, 148, 136, 0.35);
+    }
+
+    .btn-analyze:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 6px 18px rgba(13, 148, 136, 0.4);
+    }
+
+    .btn-analyze:active {
+      transform: translateY(0);
+    }
+
+    .btn-analyze:disabled {
+      opacity: 0.65;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .btn-secondary {
+      flex: 1;
+      padding: 11px;
+      border-radius: 11px;
+      border: 1.5px solid var(--card-border);
+      background: var(--result-bg);
+      color: var(--text-secondary);
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 7px;
+      transition: all 0.2s;
+      letter-spacing: 0.01em;
+    }
+
+    .btn-secondary:hover {
+      border-color: var(--teal);
+      color: var(--teal);
+      background: #f0fdfa;
+    }
+
+    html.dark .btn-secondary:hover {
+      background: rgba(13, 148, 136, 0.1);
+    }
+
+    .btn-pdf {
+      flex: 1;
+      padding: 11px;
+      border-radius: 11px;
+      border: 1.5px solid #99f6e4;
+      background: #f0fdfa;
+      color: var(--teal);
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 7px;
+      transition: all 0.2s;
+      letter-spacing: 0.01em;
+    }
+
+    .btn-pdf:hover {
+      background: var(--teal);
+      color: white;
+      border-color: var(--teal);
+    }
+
+    html.dark .btn-pdf {
+      background: rgba(13, 148, 136, 0.12);
+      border-color: rgba(13, 148, 136, 0.4);
+    }
+
+    html.dark .btn-pdf:hover {
+      background: var(--teal);
+      color: white;
+    }
+
+    /* ── Result components ── */
+    .result-fade {
+      opacity: 0;
+      transform: translateY(12px);
+      transition: opacity 0.45s ease, transform 0.45s ease;
+    }
+
+    .result-fade.visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    .danger-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: #fff1f2;
+      color: var(--rose);
+      border: 1px solid #fecdd3;
+      border-radius: 8px;
+      padding: 4px 12px;
+      font-size: 12px;
+      font-weight: 600;
+      letter-spacing: 0.04em;
+    }
+
+    .safe-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: #f0fdfa;
+      color: var(--teal);
+      border: 1px solid #99f6e4;
+      border-radius: 8px;
+      padding: 4px 12px;
+      font-size: 12px;
+      font-weight: 600;
+      letter-spacing: 0.04em;
+    }
+
+    html.dark .danger-badge {
+      background: rgba(225, 29, 72, 0.15);
+      border-color: rgba(225, 29, 72, 0.35);
+    }
+
+    html.dark .safe-badge {
+      background: rgba(13, 148, 136, 0.15);
+      border-color: rgba(13, 148, 136, 0.35);
+    }
+
+    .result-box {
+      background: var(--result-bg);
+      border: 1px solid var(--result-border);
+      border-radius: 16px;
+      padding: 20px;
+      transition: background 0.3s, border-color 0.3s;
+    }
+
+    /* ── Text helpers ── */
+    .text-primary {
+      color: var(--text-primary);
+      transition: color 0.3s;
+    }
+
+    .text-secondary {
+      color: var(--text-secondary);
+      transition: color 0.3s;
+    }
+
+    .text-muted {
+      color: var(--text-muted);
+      transition: color 0.3s;
+    }
+
+    /* ── Spinner ── */
+    .spinner {
+      width: 18px;
+      height: 18px;
+      border: 2.5px solid rgba(255, 255, 255, 0.35);
+      border-top-color: white;
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+    }
+
+    @keyframes spin {
+      to {
+        transform: rotate(360deg);
       }
-    </style>
-  </head>
-  <body class="min-h-screen flex flex-col items-center py-10 px-4">
-    <!-- User Nav Bar -->
-    {% if user and user.is_authenticated %}
-    <div style="position:fixed;top:0;left:0;right:0;z-index:50;background:rgba(255,255,255,0.85);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);border-bottom:1px solid #e2e8f0;padding:10px 24px;display:flex;align-items:center;justify-content:space-between">
-      <div style="display:flex;align-items:center;gap:10px">
-        <div style="width:32px;height:32px;border-radius:10px;background:linear-gradient(135deg,#0d9488,#0f766e);display:flex;align-items:center;justify-content:center;color:white;font-weight:700;font-size:13px;font-family:'DM Sans',sans-serif">{{ user.first_name[0] }}{{ user.last_name[0] }}</div>
-        <span style="font-size:14px;font-weight:500;color:#334155;font-family:'DM Sans',sans-serif">{{ user.first_name }} {{ user.last_name }}</span>
+    }
+
+    /* ── Divider ── */
+    .section-divider {
+      height: 1px;
+      background: linear-gradient(to right, transparent, var(--divider), transparent);
+      margin: 28px 0;
+      transition: background 0.3s;
+    }
+
+    /* ── Drop zone ── */
+    .drop-zone {
+      border: 2px dashed var(--input-border);
+      border-radius: 14px;
+      padding: 32px;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .drop-zone:hover {
+      background: var(--result-bg);
+    }
+  </style>
+</head>
+
+<body class="min-h-screen flex flex-col items-center pt-20 pb-12 px-4">
+
+  <!-- ── Top Nav ── -->
+  {% if user and user.is_authenticated %}
+  <nav class="top-nav">
+    <div class="nav-left">
+      <div class="nav-avatar">
+        {% if user.avatar_url %}
+        <img src="{{ user.avatar_url }}" alt="Profile" style="width:100%;height:100%;border-radius:10px;object-fit:cover;">
+        {% else %}
+        {{ user.first_name[0] }}{{ user.last_name[0] }}
+        {% endif %}
       </div>
-      <a href="/logout" style="display:inline-flex;align-items:center;gap:6px;padding:7px 16px;border-radius:10px;font-size:13px;font-weight:600;color:#64748b;background:#f1f5f9;text-decoration:none;transition:all 0.2s;font-family:'DM Sans',sans-serif;border:1px solid #e2e8f0" onmouseover="this.style.background='#fee2e2';this.style.color='#dc2626';this.style.borderColor='#fecaca'" onmouseout="this.style.background='#f1f5f9';this.style.color='#64748b';this.style.borderColor='#e2e8f0'">
-        <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg>
+      <a href="/account" class="nav-name" style="text-decoration:none;">{{ user.first_name }} {{ user.last_name }}</a>
+    </div>
+    <div class="nav-right">
+      <a href="/get-started" class="nav-link">
+        <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+            d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+        </svg>
+        Get Started
+      </a>
+      <a href="/explore" class="nav-link">
+        <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9" />
+        </svg>
+        Explore DermaDetect
+      </a>
+      <a href="/articles" class="nav-link">
+        <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z" />
+        </svg>
+        Skin Health Articles
+      </a>
+      <a href="/dashboard" class="nav-link">
+        <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16" />
+        </svg>
+        Dashboard
+      </a>
+      <!-- Dark mode toggle -->
+      <button class="theme-btn" id="themeToggle" title="Toggle dark mode" onclick="toggleTheme()">
+        <svg id="iconSun" width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"
+          style="display:none">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+            d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364-6.364l-.707.707M6.343 17.657l-.707.707M17.657 17.657l-.707-.707M6.343 6.343l-.707-.707M12 8a4 4 0 100 8 4 4 0 000-8z" />
+        </svg>
+        <svg id="iconMoon" width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+            d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+        </svg>
+      </button>
+      <a href="/logout" class="nav-logout">
+        <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+            d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+        </svg>
         Sign Out
       </a>
     </div>
-    <div style="height:56px"></div>
-    {% endif %}
+  </nav>
+  {% endif %}
 
-    <!-- Header -->
-    <header class="max-w-2xl w-full text-center mb-8">
-      <div
-        class="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-teal-600 mb-4 shadow-lg shadow-teal-200"
-      >
-        <svg
-          class="w-7 h-7 text-white"
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
-        >
-          <path
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            stroke-width="2"
-            d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"
-          />
+  <!-- ── Header ── -->
+  <header class="max-w-2xl w-full text-center mb-8">
+    <div
+      class="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-teal-600 mb-4 shadow-lg shadow-teal-200">
+      <svg class="w-7 h-7 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+          d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" />
+      </svg>
+    </div>
+    <h1 class="text-3xl font-bold tracking-tight" style="color:var(--text-primary)">DermaDetect</h1>
+    <p class="mt-2 text-sm" style="color:var(--text-muted)">
+      Deep learning analysis for dermatological lesion assessment
+    </p>
+  </header>
+
+  <!-- ── Main Card ── -->
+  <main class="w-full max-w-2xl card p-7">
+
+    <!-- Image Upload -->
+    <p class="label">Lesion Image</p>
+    <div id="drop-zone" class="drop-zone mb-6 group relative">
+      <input type="file" id="imageInput" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+        accept="image/*" />
+      <div id="upload-prompt" class="flex flex-col items-center pointer-events-none">
+        <svg class="w-12 h-12 text-teal-400 mb-3 group-hover:text-teal-500 transition-colors" fill="none"
+          stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+            d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
         </svg>
+        <p class="text-sm font-medium" style="color:var(--text-secondary)">Click or drag image here</p>
+        <p class="text-xs mt-1" style="color:var(--text-muted)">JPG, PNG, JPEG supported</p>
       </div>
-      <h1 class="text-3xl font-bold text-slate-800 tracking-tight">
-        SkinCancer<span class="text-teal-600"> AI</span>
-      </h1>
-      <p class="text-slate-500 mt-2 text-sm">
-        Deep learning analysis for dermatological lesion assessment
-      </p>
-    </header>
+      <div id="image-preview-container" class="hidden flex-col items-center">
+        <img id="image-preview" src="#" alt="Preview" class="max-h-56 rounded-xl shadow-sm mb-2 object-contain" />
+        <p class="text-xs font-medium text-teal-600">Click to change image</p>
+      </div>
+    </div>
 
-    <!-- Main Card -->
-    <main class="w-full max-w-2xl card p-7">
-      <!-- Image Upload -->
-      <p class="label">Lesion Image</p>
-      <div
-        id="drop-zone"
-        class="relative border-2 border-dashed border-gray-200 rounded-xl p-8 mb-6 text-center cursor-pointer hover:bg-gray-50 transition-colors group"
-      >
-        <input
-          type="file"
-          id="imageInput"
-          class="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-          accept="image/*"
-        />
-        <div
-          id="upload-prompt"
-          class="flex flex-col items-center pointer-events-none"
-        >
-          <svg
-            class="w-12 h-12 text-teal-400 mb-3 group-hover:text-teal-500 transition-colors"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              stroke-width="1.5"
-              d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"
-            />
+    <!-- Patient Info -->
+    <div class="section-divider"></div>
+    <p class="text-xs font-semibold uppercase tracking-widest mb-5" style="color:var(--text-muted)">
+      Patient Information
+    </p>
+
+    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+      <div>
+        <label class="label" for="age">Age</label>
+        <input type="number" id="age" class="input-field" placeholder="e.g. 45" min="0" max="120" />
+      </div>
+      <div>
+        <label class="label" for="sex">Biological Sex</label>
+        <select id="sex" class="input-field">
+          {% for opt in sex_options %}
+          <option value="{{ opt }}">{{ opt | capitalize }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div>
+        <label class="label" for="localization">Lesion Location</label>
+        <select id="localization" class="input-field">
+          <option value="abdomen">Abdomen</option>
+          <option value="acral">Acral</option>
+          <option value="back">Back</option>
+          <option value="chest">Chest</option>
+          <option value="ear">Ear</option>
+          <option value="face">Face</option>
+          <option value="foot">Foot</option>
+          <option value="genital">Genital</option>
+          <option value="hand">Hand</option>
+          <option value="lower extremity">Lower Extremity</option>
+          <option value="neck">Neck</option>
+          <option value="scalp">Scalp</option>
+          <option value="trunk">Trunk</option>
+          <option value="upper extremity">Upper Extremity</option>
+          <option value="unknown">Unknown</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- Analyze Button -->
+    <button id="analyze-btn" class="btn-analyze">
+      <span id="loading-spinner" class="spinner hidden"></span>
+      <span id="btn-text">Analyze Lesion</span>
+    </button>
+
+    <!-- Error -->
+    <div id="error-message"
+      class="hidden mt-4 p-3.5 text-sm text-rose-700 bg-rose-50 border border-rose-200 rounded-xl flex items-center gap-2">
+      <svg class="w-4 h-4 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+        <path fill-rule="evenodd"
+          d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
+          clip-rule="evenodd" />
+      </svg>
+      <span id="error-text"></span>
+    </div>
+
+    <!-- ── Results ── -->
+    <div id="results-container" class="result-fade hidden mt-8">
+      <div class="section-divider" style="margin-top:0"></div>
+      <div class="flex items-center justify-between mb-5">
+        <p class="text-sm font-semibold" style="color:var(--text-primary)">AI Assessment Report</p>
+        <div id="risk-badge"></div>
+      </div>
+
+      <div class="grid grid-cols-2 gap-4 mb-6">
+        <div class="result-box">
+          <p class="text-xs font-semibold uppercase tracking-wider mb-2" style="color:var(--text-muted)">Classification
+          </p>
+          <div id="predicted-class" class="text-2xl font-bold" style="color:var(--text-primary)">--</div>
+          <div id="predicted-class-full" class="text-xs mt-1" style="color:var(--text-muted)">--</div>
+        </div>
+        <div class="result-box">
+          <p class="text-xs font-semibold uppercase tracking-wider mb-2" style="color:var(--text-muted)">Confidence</p>
+          <div id="predicted-confidence" class="text-2xl font-bold text-teal-600">--%</div>
+          <div class="mt-2 h-2 rounded-full overflow-hidden" style="background:var(--card-border)">
+            <div id="confidence-bar" class="h-full bg-teal-500 rounded-full transition-all duration-700"
+              style="width:0%"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Chart -->
+      <div class="result-box mb-4">
+        <p class="text-xs font-semibold uppercase tracking-wider mb-3" style="color:var(--text-muted)">Probability
+          Distribution</p>
+        <div class="relative h-56">
+          <canvas id="predictionChart"></canvas>
+        </div>
+      </div>
+
+      <!-- ── Action buttons: PDF + Reset ── -->
+      <div class="flex gap-3 mt-2">
+        <button class="btn-pdf" id="downloadPdfBtn" onclick="downloadPDF()">
+          <svg width="15" height="15" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+              d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
           </svg>
-          <p class="text-sm font-medium text-gray-600">
-            Click or drag image here
-          </p>
-          <p class="text-xs text-gray-400 mt-1">JPG, PNG, JPEG supported</p>
-        </div>
-        <div id="image-preview-container" class="hidden flex-col items-center">
-          <img
-            id="image-preview"
-            src="#"
-            alt="Preview"
-            class="max-h-56 rounded-xl shadow-sm mb-2 object-contain"
-          />
-          <p class="text-xs text-teal-600 font-medium">Click to change image</p>
-        </div>
+          Download PDF
+        </button>
+        <button class="btn-secondary" id="resetBtn" onclick="resetForm()">
+          <svg width="15" height="15" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+              d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+          </svg>
+          Reset
+        </button>
       </div>
+    </div>
+  </main>
 
-      <!-- Patient Info -->
-      <div class="section-divider"></div>
-      <p
-        class="text-xs font-semibold text-slate-400 uppercase tracking-widest mb-5"
-      >
-        Patient Information
-      </p>
+  <footer class="mt-8 text-center text-xs pb-8"
+    style="color:var(--footer-color);max-width:36rem;padding-left:1rem;padding-right:1rem">
+    For investigational use only. Not a substitute for professional medical diagnosis or treatment.
+  </footer>
 
-      <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
-        <!-- Age -->
-        <div>
-          <label class="label" for="age">Age</label>
-          <input
-            type="number"
-            id="age"
-            class="input-field"
-            placeholder="e.g. 45"
-            min="0"
-            max="120"
-          />
-        </div>
+  <script>
+    // ── Dark mode ──────────────────────────────────────────────────────────
+    const html = document.documentElement;
+    const iconSun = document.getElementById('iconSun');
+    const iconMoon = document.getElementById('iconMoon');
 
-        <!-- Sex -->
-        <div>
-          <label class="label" for="sex">Biological Sex</label>
-          <select id="sex" class="input-field">
-            {% for opt in sex_options %}
-            <option value="{{ opt }}">{{ opt | capitalize }}</option>
-            {% endfor %}
-          </select>
-        </div>
+    function applyTheme(dark) {
+      if (dark) {
+        html.classList.add('dark');
+        iconSun.style.display = 'block';
+        iconMoon.style.display = 'none';
+      } else {
+        html.classList.remove('dark');
+        iconSun.style.display = 'none';
+        iconMoon.style.display = 'block';
+      }
+    }
 
-        <!-- Localization -->
-        <div>
-          <label class="label" for="localization">Lesion Location</label>
-          <select id="localization" class="input-field">
-            <option value="abdomen">Abdomen</option>
-            <option value="acral">Acral</option>
-            <option value="back">Back</option>
-            <option value="chest">Chest</option>
-            <option value="ear">Ear</option>
-            <option value="face">Face</option>
-            <option value="foot">Foot</option>
-            <option value="genital">Genital</option>
-            <option value="hand">Hand</option>
-            <option value="lower extremity">Lower Extremity</option>
-            <option value="neck">Neck</option>
-            <option value="scalp">Scalp</option>
-            <option value="trunk">Trunk</option>
-            <option value="upper extremity">Upper Extremity</option>
-            <option value="unknown">Unknown</option>
-          </select>
-        </div>
-      </div>
+    function toggleTheme() {
+      const isDark = html.classList.contains('dark');
+      localStorage.setItem('theme', isDark ? 'light' : 'dark');
+      applyTheme(!isDark);
+      if (myChart) rebuildChart();
+    }
 
-      <!-- Analyze Button -->
-      <button id="analyze-btn" class="btn-analyze">
-        <span id="loading-spinner" class="spinner hidden"></span>
-        <span id="btn-text">Analyze Lesion</span>
-      </button>
+    // Load saved theme on page load
+    applyTheme(localStorage.getItem('theme') === 'dark');
 
-      <!-- Error -->
-      <div
-        id="error-message"
-        class="hidden mt-4 p-3.5 text-sm text-rose-700 bg-rose-50 border border-rose-200 rounded-xl flex items-center gap-2"
-      >
-        <svg
-          class="w-4 h-4 flex-shrink-0"
-          fill="currentColor"
-          viewBox="0 0 20 20"
-        >
-          <path
-            fill-rule="evenodd"
-            d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
-            clip-rule="evenodd"
-          />
-        </svg>
-        <span id="error-text"></span>
-      </div>
+    // ── Image upload & drag/drop ───────────────────────────────────────────
+    const dropZone = document.getElementById('drop-zone');
+    const imageInput = document.getElementById('imageInput');
+    const uploadPrompt = document.getElementById('upload-prompt');
+    const previewContainer = document.getElementById('image-preview-container');
+    const imagePreview = document.getElementById('image-preview');
+    const analyzeBtn = document.getElementById('analyze-btn');
+    const btnText = document.getElementById('btn-text');
+    const loadingSpinner = document.getElementById('loading-spinner');
+    const resultsContainer = document.getElementById('results-container');
+    const errorMessage = document.getElementById('error-message');
+    const errorText = document.getElementById('error-text');
 
-      <!-- Results -->
-      <div id="results-container" class="result-fade hidden mt-8">
-        <div class="section-divider" style="margin-top: 0"></div>
-        <div class="flex items-center justify-between mb-5">
-          <p class="text-sm font-semibold text-slate-700">
-            AI Assessment Report
-          </p>
-          <div id="risk-badge"></div>
-        </div>
+    let myChart = null;
+    let selectedFile = null;
+    let lastResult = null;
 
-        <div class="grid grid-cols-2 gap-4 mb-6">
-          <div class="bg-slate-50 rounded-2xl p-5 border border-slate-100">
-            <p
-              class="text-xs text-slate-400 font-semibold uppercase tracking-wider mb-2"
-            >
-              Classification
-            </p>
-            <div id="predicted-class" class="text-2xl font-bold text-slate-800">
-              --
-            </div>
-            <div id="predicted-class-full" class="text-xs text-slate-500 mt-1">
-              --
-            </div>
-          </div>
-          <div class="bg-slate-50 rounded-2xl p-5 border border-slate-100">
-            <p
-              class="text-xs text-slate-400 font-semibold uppercase tracking-wider mb-2"
-            >
-              Confidence
-            </p>
-            <div
-              id="predicted-confidence"
-              class="text-2xl font-bold text-teal-600"
-            >
-              --%
-            </div>
-            <div class="mt-2 h-2 bg-slate-200 rounded-full overflow-hidden">
-              <div
-                id="confidence-bar"
-                class="h-full bg-teal-500 rounded-full transition-all duration-700"
-                style="width: 0%"
-              ></div>
-            </div>
-          </div>
-        </div>
+    function handleFile(file) {
+      if (!file || !file.type.startsWith('image/')) { showError('Please select a valid image file.'); return; }
+      hideError();
+      selectedFile = file;
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        imagePreview.src = e.target.result;
+        uploadPrompt.classList.add('hidden');
+        previewContainer.classList.remove('hidden');
+        previewContainer.classList.add('flex');
+        resultsContainer.classList.remove('visible');
+        setTimeout(() => resultsContainer.classList.add('hidden'), 450);
+      };
+      reader.readAsDataURL(file);
+    }
 
-        <!-- Chart -->
-        <div class="bg-slate-50 rounded-2xl border border-slate-100 p-4">
-          <p
-            class="text-xs font-semibold text-slate-500 mb-3 uppercase tracking-wider"
-          >
-            Probability Distribution
-          </p>
-          <div class="relative h-56">
-            <canvas id="predictionChart"></canvas>
-          </div>
-        </div>
-      </div>
-    </main>
+    imageInput.addEventListener('change', (e) => { if (e.target.files.length) handleFile(e.target.files[0]); });
+    dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.classList.add('drag-active'); });
+    dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-active'));
+    dropZone.addEventListener('drop', (e) => {
+      e.preventDefault(); dropZone.classList.remove('drag-active');
+      if (e.dataTransfer.files.length) { imageInput.files = e.dataTransfer.files; handleFile(e.dataTransfer.files[0]); }
+    });
 
-    <footer class="mt-8 text-center text-xs text-slate-400 max-w-xl px-4 pb-8">
-      For investigational use only. Not a substitute for professional medical
-      diagnosis or treatment.
-    </footer>
+    // ── Analyze ───────────────────────────────────────────────────────────
+    analyzeBtn.addEventListener('click', async () => {
+      if (!selectedFile) { showError('Please select an image first.'); return; }
+      const age = document.getElementById('age').value.trim();
+      if (!age) { showError("Please enter the patient's age."); return; }
+      if (parseFloat(age) < 0 || parseFloat(age) > 120) { showError('Please enter a valid age between 0 and 120.'); return; }
 
-    <script>
-      const dropZone = document.getElementById("drop-zone");
-      const imageInput = document.getElementById("imageInput");
-      const uploadPrompt = document.getElementById("upload-prompt");
-      const previewContainer = document.getElementById(
-        "image-preview-container",
-      );
-      const imagePreview = document.getElementById("image-preview");
-      const analyzeBtn = document.getElementById("analyze-btn");
-      const btnText = document.getElementById("btn-text");
-      const loadingSpinner = document.getElementById("loading-spinner");
-      const resultsContainer = document.getElementById("results-container");
-      const errorMessage = document.getElementById("error-message");
-      const errorText = document.getElementById("error-text");
+      setLoading(true); hideError();
 
-      let myChart = null;
-      let selectedFile = null;
+      const formData = new FormData();
+      formData.append('file', selectedFile);
+      formData.append('age', age);
+      formData.append('sex', document.getElementById('sex').value);
+      formData.append('localization', document.getElementById('localization').value);
 
-      function handleFile(file) {
-        if (!file || !file.type.startsWith("image/")) {
-          showError("Please select a valid image file.");
-          return;
-        }
-        hideError();
-        selectedFile = file;
-        const reader = new FileReader();
-        reader.onload = (e) => {
-          imagePreview.src = e.target.result;
-          uploadPrompt.classList.add("hidden");
-          previewContainer.classList.remove("hidden");
-          previewContainer.classList.add("flex");
-          resultsContainer.classList.remove("visible");
-          setTimeout(() => resultsContainer.classList.add("hidden"), 450);
-        };
-        reader.readAsDataURL(file);
+      try {
+        const response = await fetch('/predict', { method: 'POST', body: formData });
+        const data = await response.json();
+        if (data.error) { showError(data.error); }
+        else { lastResult = data; displayResults(data); }
+      } catch (err) {
+        showError('Connection error. Please check the server is running.');
+      } finally {
+        setLoading(false);
+      }
+    });
+
+    function setLoading(on) {
+      analyzeBtn.disabled = on;
+      loadingSpinner.classList.toggle('hidden', !on);
+      btnText.innerText = on ? 'Analyzing...' : 'Analyze Lesion';
+    }
+    function showError(msg) { errorText.innerText = msg; errorMessage.classList.remove('hidden'); }
+    function hideError() { errorMessage.classList.add('hidden'); }
+
+    function displayResults(data) {
+      document.getElementById('predicted-class').innerText = data.predicted_class.toUpperCase();
+      document.getElementById('predicted-class-full').innerText = data.predicted_class_full;
+      document.getElementById('predicted-confidence').innerText = data.confidence + '%';
+      document.getElementById('confidence-bar').style.width = data.confidence + '%';
+
+      const confidenceBar = document.getElementById('confidence-bar');
+      const badge = document.getElementById('risk-badge');
+      const classEl = document.getElementById('predicted-class');
+      if (data.is_dangerous) {
+        classEl.style.color = '#e11d48';
+        confidenceBar.className = 'h-full bg-rose-500 rounded-full transition-all duration-700';
+        badge.innerHTML = `<span class="danger-badge"><svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/></svg>HIGH RISK</span>`;
+      } else {
+        classEl.style.color = '#0d9488';
+        confidenceBar.className = 'h-full bg-teal-500 rounded-full transition-all duration-700';
+        badge.innerHTML = `<span class="safe-badge"><svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>LOW RISK</span>`;
       }
 
-      imageInput.addEventListener("change", (e) => {
-        if (e.target.files.length) handleFile(e.target.files[0]);
-      });
-      dropZone.addEventListener("dragover", (e) => {
-        e.preventDefault();
-        dropZone.classList.add("drag-active");
-      });
-      dropZone.addEventListener("dragleave", () =>
-        dropZone.classList.remove("drag-active"),
-      );
-      dropZone.addEventListener("drop", (e) => {
-        e.preventDefault();
-        dropZone.classList.remove("drag-active");
-        if (e.dataTransfer.files.length) {
-          imageInput.files = e.dataTransfer.files;
-          handleFile(e.dataTransfer.files[0]);
-        }
-      });
+      resultsContainer.classList.remove('hidden');
+      requestAnimationFrame(() => requestAnimationFrame(() => resultsContainer.classList.add('visible')));
+      buildChart(data.all_probabilities, data.class_names_full);
+      resultsContainer.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
 
-      analyzeBtn.addEventListener("click", async () => {
-        if (!selectedFile) {
-          showError("Please select an image first.");
-          return;
-        }
-        const age = document.getElementById("age").value.trim();
-        if (!age) {
-          showError("Please enter the patient's age.");
-          return;
-        }
-        if (parseFloat(age) < 0 || parseFloat(age) > 120) {
-          showError("Please enter a valid age between 0 and 120.");
-          return;
-        }
+    // ── Chart ─────────────────────────────────────────────────────────────
+    function buildChart(probabilities, classNamesFull) {
+      const isDark = html.classList.contains('dark');
+      const labels = Object.keys(probabilities).map(k => k.toUpperCase());
+      const values = Object.values(probabilities);
+      const keys = Object.keys(probabilities);
+      const DANGEROUS = ['mel', 'akiec'];
+      const colors = keys.map(k => DANGEROUS.includes(k) ? 'rgba(225,29,72,0.75)' : 'rgba(13,148,136,0.72)');
+      const borders = keys.map(k => DANGEROUS.includes(k) ? '#e11d48' : '#0d9488');
+      const gridColor = isDark ? '#334155' : '#f1f5f9';
+      const tickColor = isDark ? '#64748b' : '#94a3b8';
+      const labelColor = isDark ? '#94a3b8' : '#475569';
 
-        setLoading(true);
-        hideError();
-
-        const formData = new FormData();
-        formData.append("file", selectedFile);
-        formData.append("age", age);
-        formData.append("sex", document.getElementById("sex").value);
-        formData.append(
-          "localization",
-          document.getElementById("localization").value,
-        );
-
-        try {
-          const response = await fetch("/predict", {
-            method: "POST",
-            body: formData,
-          });
-          const data = await response.json();
-          if (data.error) {
-            showError(data.error);
-          } else {
-            displayResults(data);
-          }
-        } catch (err) {
-          showError("Connection error. Please check the server is running.");
-        } finally {
-          setLoading(false);
-        }
-      });
-
-      function setLoading(on) {
-        analyzeBtn.disabled = on;
-        loadingSpinner.classList.toggle("hidden", !on);
-        btnText.innerText = on ? "Analyzing..." : "Analyze Lesion";
-      }
-
-      function showError(msg) {
-        errorText.innerText = msg;
-        errorMessage.classList.remove("hidden");
-      }
-      function hideError() {
-        errorMessage.classList.add("hidden");
-      }
-
-      function displayResults(data) {
-        document.getElementById("predicted-class").innerText =
-          data.predicted_class.toUpperCase();
-        document.getElementById("predicted-class-full").innerText =
-          data.predicted_class_full;
-        document.getElementById("predicted-confidence").innerText =
-          data.confidence + "%";
-        document.getElementById("confidence-bar").style.width =
-          data.confidence + "%";
-
-        const confidenceBar = document.getElementById("confidence-bar");
-        const badge = document.getElementById("risk-badge");
-        if (data.is_dangerous) {
-          document.getElementById("predicted-class").style.color = "#e11d48";
-          confidenceBar.className =
-            "h-full bg-rose-500 rounded-full transition-all duration-700";
-          badge.innerHTML = `<span class="danger-badge"><svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/></svg>HIGH RISK</span>`;
-        } else {
-          document.getElementById("predicted-class").style.color = "#0d9488";
-          confidenceBar.className =
-            "h-full bg-teal-500 rounded-full transition-all duration-700";
-          badge.innerHTML = `<span class="safe-badge"><svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>LOW RISK</span>`;
-        }
-
-        resultsContainer.classList.remove("hidden");
-        requestAnimationFrame(() => {
-          requestAnimationFrame(() =>
-            resultsContainer.classList.add("visible"),
-          );
-        });
-
-        updateChart(
-          data.all_probabilities,
-          data.class_names_full,
-          data.is_dangerous,
-        );
-        resultsContainer.scrollIntoView({
-          behavior: "smooth",
-          block: "nearest",
-        });
-      }
-
-      function updateChart(probabilities, classNamesFull, isDangerous) {
-        const labels = Object.keys(probabilities).map((k) => k.toUpperCase());
-        const values = Object.values(probabilities);
-        const keys = Object.keys(probabilities);
-        const DANGEROUS = ["mel", "akiec"];
-
-        const colors = keys.map((k) =>
-          DANGEROUS.includes(k) ?
-            "rgba(225, 29, 72, 0.75)"
-          : "rgba(13, 148, 136, 0.72)",
-        );
-        const borders = keys.map((k) =>
-          DANGEROUS.includes(k) ? "#e11d48" : "#0d9488",
-        );
-
-        const ctx = document.getElementById("predictionChart").getContext("2d");
-        if (myChart) myChart.destroy();
-
-        myChart = new Chart(ctx, {
-          type: "bar",
-          data: {
-            labels,
-            datasets: [
-              {
-                label: "Probability (%)",
-                data: values,
-                backgroundColor: colors,
-                borderColor: borders,
-                borderWidth: 1.5,
-                borderRadius: 7,
-                borderSkipped: false,
-              },
-            ],
+      const ctx = document.getElementById('predictionChart').getContext('2d');
+      if (myChart) myChart.destroy();
+      myChart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels,
+          datasets: [{ label: 'Probability (%)', data: values, backgroundColor: colors, borderColor: borders, borderWidth: 1.5, borderRadius: 7, borderSkipped: false }]
+        },
+        options: {
+          responsive: true, maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              backgroundColor: isDark ? '#1e293b' : '#1e293b',
+              titleFont: { family: 'DM Sans', size: 13, weight: '600' },
+              bodyFont: { family: 'DM Sans', size: 13 },
+              padding: 12, cornerRadius: 10, displayColors: false,
+              callbacks: {
+                title: (items) => { const key = Object.keys(probabilities)[items[0].dataIndex]; return classNamesFull[key] || key; },
+                label: (ctx) => `${ctx.parsed.y.toFixed(1)}% Confidence`,
+              }
+            }
           },
-          options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-              legend: { display: false },
-              tooltip: {
-                backgroundColor: "#1e293b",
-                titleFont: { family: "DM Sans", size: 13, weight: "600" },
-                bodyFont: { family: "DM Sans", size: 13 },
-                padding: 12,
-                cornerRadius: 10,
-                displayColors: false,
-                callbacks: {
-                  title: (items) => {
-                    const key = Object.keys(probabilities)[items[0].dataIndex];
-                    return classNamesFull[key] || key;
-                  },
-                  label: (ctx) => `${ctx.parsed.y.toFixed(1)}% Confidence`,
-                },
-              },
-            },
-            scales: {
-              y: {
-                beginAtZero: true,
-                max: 100,
-                grid: { color: "#f1f5f9" },
-                ticks: {
-                  font: { family: "DM Mono", size: 11 },
-                  color: "#94a3b8",
-                },
-              },
-              x: {
-                grid: { display: false },
-                ticks: {
-                  font: { family: "DM Sans", weight: "600", size: 12 },
-                  color: "#475569",
-                },
-              },
-            },
-            animation: { duration: 1000, easing: "easeOutQuart" },
+          scales: {
+            y: { beginAtZero: true, max: 100, grid: { color: gridColor }, ticks: { font: { family: 'DM Mono', size: 11 }, color: tickColor } },
+            x: { grid: { display: false }, ticks: { font: { family: 'DM Sans', weight: '600', size: 12 }, color: labelColor } }
           },
-        });
-      }
-    </script>
-  </body>
+          animation: { duration: 1000, easing: 'easeOutQuart' }
+        }
+      });
+    }
+
+    function rebuildChart() {
+      if (lastResult) buildChart(lastResult.all_probabilities, lastResult.class_names_full);
+    }
+
+    // ── Reset ─────────────────────────────────────────────────────────────
+    function resetForm() {
+      selectedFile = null;
+      lastResult = null;
+      imageInput.value = '';
+      document.getElementById('age').value = '';
+      document.getElementById('sex').selectedIndex = 0;
+      document.getElementById('localization').selectedIndex = 0;
+      imagePreview.src = '#';
+      uploadPrompt.classList.remove('hidden');
+      previewContainer.classList.add('hidden');
+      previewContainer.classList.remove('flex');
+      resultsContainer.classList.remove('visible');
+      setTimeout(() => resultsContainer.classList.add('hidden'), 450);
+      hideError();
+      if (myChart) { myChart.destroy(); myChart = null; }
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    // ── PDF Download ──────────────────────────────────────────────────────
+    function downloadPDF() {
+      if (!lastResult) return;
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF({ unit: 'mm', format: 'a4' });
+      const age = document.getElementById('age').value;
+      const sex = document.getElementById('sex').value;
+      const loc = document.getElementById('localization').value;
+      const now = new Date().toLocaleString();
+
+      // Header bar
+      doc.setFillColor(13, 148, 136);
+      doc.rect(0, 0, 210, 30, 'F');
+      doc.setTextColor(255, 255, 255);
+      doc.setFontSize(18); doc.setFont('helvetica', 'bold');
+      doc.text('DermaDetect', 14, 13);
+      doc.setFontSize(9); doc.setFont('helvetica', 'normal');
+      doc.text('AI Assessment Report', 14, 21);
+      doc.text(`Generated: ${now}`, 210 - 14, 21, { align: 'right' });
+
+      // Risk badge
+      const dangerous = lastResult.is_dangerous;
+      doc.setFillColor(dangerous ? 225 : 13, dangerous ? 29 : 148, dangerous ? 72 : 136);
+      doc.roundedRect(14, 37, 46, 10, 2, 2, 'F');
+      doc.setTextColor(255, 255, 255);
+      doc.setFontSize(9); doc.setFont('helvetica', 'bold');
+      doc.text(dangerous ? '⚠ HIGH RISK' : '✓ LOW RISK', 37, 43.5, { align: 'center' });
+
+      // Classification block
+      doc.setTextColor(30, 41, 59);
+      doc.setFontSize(11); doc.setFont('helvetica', 'bold');
+      doc.text('Classification', 14, 60);
+      doc.setFontSize(20); doc.setFont('helvetica', 'bold');
+      doc.setTextColor(dangerous ? 225 : 13, dangerous ? 29 : 148, dangerous ? 72 : 136);
+      doc.text(lastResult.predicted_class.toUpperCase(), 14, 72);
+      doc.setFontSize(11); doc.setFont('helvetica', 'normal'); doc.setTextColor(100, 116, 139);
+      doc.text(lastResult.predicted_class_full, 14, 80);
+
+      // Confidence
+      doc.setTextColor(30, 41, 59);
+      doc.setFontSize(11); doc.setFont('helvetica', 'bold');
+      doc.text('Confidence', 120, 60);
+      doc.setFontSize(20); doc.setFont('helvetica', 'bold');
+      doc.setTextColor(13, 148, 136);
+      doc.text(`${lastResult.confidence}%`, 120, 72);
+      doc.setFillColor(226, 232, 240); doc.rect(120, 75, 70, 3, 'F');
+      doc.setFillColor(13, 148, 136);
+      doc.rect(120, 75, (lastResult.confidence / 100) * 70, 3, 'F');
+
+      // Divider
+      doc.setDrawColor(226, 232, 240); doc.line(14, 88, 196, 88);
+
+      // Patient info
+      doc.setTextColor(30, 41, 59);
+      doc.setFontSize(11); doc.setFont('helvetica', 'bold');
+      doc.text('Patient Information', 14, 97);
+      doc.setFontSize(10); doc.setFont('helvetica', 'normal'); doc.setTextColor(71, 85, 105);
+      doc.text(`Age: ${age}`, 14, 106);
+      doc.text(`Sex: ${sex.charAt(0).toUpperCase() + sex.slice(1)}`, 14, 113);
+      doc.text(`Lesion Location: ${loc.charAt(0).toUpperCase() + loc.slice(1)}`, 14, 120);
+
+      // Divider
+      doc.setDrawColor(226, 232, 240); doc.line(14, 127, 196, 127);
+
+      // Probability table
+      doc.setTextColor(30, 41, 59);
+      doc.setFontSize(11); doc.setFont('helvetica', 'bold');
+      doc.text('All Class Probabilities', 14, 136);
+
+      const classFullNames = lastResult.class_names_full;
+      const probs = lastResult.all_probabilities;
+      let y = 144;
+      const DANGEROUS_CLS = ['mel', 'akiec'];
+
+      Object.entries(probs).sort((a, b) => b[1] - a[1]).forEach(([cls, prob], i) => {
+        const isD = DANGEROUS_CLS.includes(cls);
+        const bg = i % 2 === 0 ? [248, 250, 252] : [255, 255, 255];
+        doc.setFillColor(...bg); doc.rect(14, y - 5, 182, 8, 'F');
+
+        doc.setTextColor(isD ? 225 : 30, isD ? 29 : 41, isD ? 72 : 59);
+        doc.setFontSize(9); doc.setFont('helvetica', 'bold');
+        doc.text(cls.toUpperCase(), 18, y);
+        doc.setFont('helvetica', 'normal'); doc.setTextColor(71, 85, 105);
+        doc.text(classFullNames[cls] || cls, 38, y);
+        doc.text(`${prob.toFixed(1)}%`, 190, y, { align: 'right' });
+
+        // Mini bar
+        doc.setFillColor(226, 232, 240); doc.rect(130, y - 3, 50, 2, 'F');
+        doc.setFillColor(isD ? 225 : 13, isD ? 29 : 148, isD ? 72 : 136);
+        doc.rect(130, y - 3, (prob / 100) * 50, 2, 'F');
+
+        y += 9;
+      });
+
+      // Footer
+      doc.setDrawColor(226, 232, 240); doc.line(14, 275, 196, 275);
+      doc.setTextColor(148, 163, 184); doc.setFontSize(8); doc.setFont('helvetica', 'normal');
+      doc.text('For investigational use only. Not a substitute for professional medical diagnosis or treatment.', 105, 282, { align: 'center' });
+
+      doc.save(`DermaDetect-report-${Date.now()}.pdf`);
+    }
+  </script>
+</body>
+
 </html>

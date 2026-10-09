@@ -1,0 +1,667 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Dashboard — DermaDetect</title>
+  <link rel="icon" type="image/svg+xml" href="/static/favicon.svg" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <link
+    href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap"
+    rel="stylesheet" />
+  <style>
+    :root {
+      --teal: #0d9488;
+      --teal-dark: #0f766e;
+      --bg: #f0f4f8;
+      --card-bg: #ffffff;
+      --card-border: #e2e8f0;
+      --card-shadow: 0 4px 24px rgba(0, 0, 0, 0.06);
+      --nav-bg: rgba(255, 255, 255, 0.88);
+      --nav-border: #e2e8f0;
+      --text-primary: #1e293b;
+      --text-secondary: #475569;
+      --text-muted: #94a3b8;
+      --result-bg: #f8fafc;
+      --result-border: #f1f5f9;
+      --divider: #e2e8f0;
+      --footer-color: #94a3b8;
+      --row-hover: #f8fafc;
+    }
+
+    html.dark {
+      --bg: #0f172a;
+      --card-bg: #1e293b;
+      --card-border: #334155;
+      --card-shadow: 0 4px 24px rgba(0, 0, 0, 0.3);
+      --nav-bg: rgba(15, 23, 42, 0.92);
+      --nav-border: #334155;
+      --text-primary: #f1f5f9;
+      --text-secondary: #94a3b8;
+      --text-muted: #64748b;
+      --result-bg: #0f172a;
+      --result-border: #334155;
+      --divider: #334155;
+      --footer-color: #475569;
+      --row-hover: #1e293b;
+    }
+
+    * {
+      font-family: "DM Sans", sans-serif;
+    }
+
+    body {
+      background: var(--bg);
+      transition: background 0.3s;
+    }
+
+    .top-nav {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      z-index: 50;
+      background: var(--nav-bg);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border-bottom: 1px solid var(--nav-border);
+      padding: 10px 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      transition: background 0.3s, border-color 0.3s;
+    }
+
+    .nav-left {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .nav-avatar {
+      width: 32px;
+      height: 32px;
+      border-radius: 10px;
+      background: linear-gradient(135deg, #0d9488, #0f766e);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-weight: 700;
+      font-size: 12px;
+    }
+
+    .nav-name {
+      font-size: 14px;
+      font-weight: 500;
+      color: var(--text-primary);
+    }
+
+    .nav-right {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .nav-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 6px 13px;
+      border-radius: 9px;
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--text-secondary);
+      text-decoration: none;
+      border: 1px solid transparent;
+      transition: all 0.18s;
+    }
+
+    .nav-link:hover {
+      background: var(--result-bg);
+      border-color: var(--card-border);
+      color: var(--teal);
+    }
+
+    .nav-link.active {
+      background: #f0fdfa;
+      color: var(--teal);
+      border-color: #99f6e4;
+    }
+
+    html.dark .nav-link.active {
+      background: rgba(13, 148, 136, 0.15);
+      border-color: rgba(13, 148, 136, 0.35);
+    }
+
+    .theme-btn {
+      width: 34px;
+      height: 34px;
+      border-radius: 9px;
+      border: 1px solid var(--card-border);
+      background: var(--result-bg);
+      color: var(--text-secondary);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.18s;
+    }
+
+    .theme-btn:hover {
+      color: var(--teal);
+      border-color: var(--teal);
+    }
+
+    .nav-logout {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 6px 13px;
+      border-radius: 9px;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-muted);
+      text-decoration: none;
+      border: 1px solid var(--card-border);
+      background: var(--result-bg);
+      transition: all 0.18s;
+    }
+
+    .nav-logout:hover {
+      background: #fee2e2;
+      color: #dc2626;
+      border-color: #fecaca;
+    }
+
+    .card {
+      background: var(--card-bg);
+      border-radius: 20px;
+      border: 1px solid var(--card-border);
+      box-shadow: var(--card-shadow);
+      transition: background 0.3s, border-color 0.3s;
+    }
+
+    /* Stat cards */
+    .stat-card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 16px;
+      padding: 22px;
+      box-shadow: var(--card-shadow);
+      transition: all 0.3s;
+    }
+
+    .stat-card:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 28px rgba(0, 0, 0, 0.1);
+    }
+
+    /* Table */
+    .data-table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    .data-table th {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--text-muted);
+      padding: 12px 16px;
+      text-align: left;
+      border-bottom: 1px solid var(--divider);
+      background: var(--result-bg);
+    }
+
+    .data-table th:first-child {
+      border-radius: 12px 0 0 0;
+    }
+
+    .data-table th:last-child {
+      border-radius: 0 12px 0 0;
+    }
+
+    .data-table td {
+      padding: 13px 16px;
+      font-size: 13px;
+      color: var(--text-secondary);
+      border-bottom: 1px solid var(--divider);
+      transition: background 0.15s;
+    }
+
+    .data-table tr:last-child td {
+      border-bottom: none;
+    }
+
+    .data-table tr:hover td {
+      background: var(--row-hover);
+    }
+
+    .data-table tr:last-child td:first-child {
+      border-radius: 0 0 0 12px;
+    }
+
+    .data-table tr:last-child td:last-child {
+      border-radius: 0 0 12px 0;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 3px 9px;
+      border-radius: 6px;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+    }
+
+    .badge-danger {
+      background: #fff1f2;
+      color: #e11d48;
+      border: 1px solid #fecdd3;
+    }
+
+    .badge-safe {
+      background: #f0fdfa;
+      color: #0d9488;
+      border: 1px solid #99f6e4;
+    }
+
+    html.dark .badge-danger {
+      background: rgba(225, 29, 72, 0.12);
+      border-color: rgba(225, 29, 72, 0.35);
+    }
+
+    html.dark .badge-safe {
+      background: rgba(13, 148, 136, 0.12);
+      border-color: rgba(13, 148, 136, 0.35);
+    }
+
+    .cls-tag {
+      font-family: 'DM Mono', monospace;
+      font-size: 11px;
+      font-weight: 500;
+      padding: 2px 7px;
+      border-radius: 5px;
+      background: var(--result-bg);
+      color: var(--text-muted);
+      border: 1px solid var(--card-border);
+    }
+
+    .empty-state {
+      text-align: center;
+      padding: 64px 24px;
+    }
+
+    .filter-btn {
+      padding: 6px 14px;
+      border-radius: 8px;
+      font-size: 12px;
+      font-weight: 600;
+      border: 1px solid var(--card-border);
+      background: var(--result-bg);
+      color: var(--text-secondary);
+      cursor: pointer;
+      transition: all 0.18s;
+    }
+
+    .filter-btn.active-filter {
+      background: #f0fdfa;
+      color: var(--teal);
+      border-color: #99f6e4;
+    }
+
+    html.dark .filter-btn.active-filter {
+      background: rgba(13, 148, 136, 0.15);
+      border-color: rgba(13, 148, 136, 0.35);
+    }
+
+    .filter-btn:hover:not(.active-filter) {
+      border-color: var(--teal);
+      color: var(--teal);
+    }
+  </style>
+</head>
+
+<body class="min-h-screen pt-20 pb-16 px-4">
+
+  <!-- Nav -->
+  {% if user and user.is_authenticated %}
+  <nav class="top-nav">
+    <div class="nav-left">
+      <div class="nav-avatar">
+        {% if user.avatar_url %}
+        <img src="{{ user.avatar_url }}" alt="Profile" style="width:100%;height:100%;border-radius:10px;object-fit:cover;">
+        {% else %}
+        {{ user.first_name[0] }}{{ user.last_name[0] }}
+        {% endif %}
+      </div>
+      <a href="/account" class="nav-name" style="text-decoration:none;">{{ user.first_name }} {{ user.last_name }}</a>
+    </div>
+    <div class="nav-right">
+      <a href="/" class="nav-link" style="background:var(--teal);color:white;border:none;box-shadow:0 4px 12px rgba(13,148,136,0.3);">
+        <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+            d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+        </svg>
+        Analyze
+      </a>
+      <a href="/get-started" class="nav-link">
+        <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+            d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+        </svg>
+        Get Started
+      </a>
+      <a href="/explore" class="nav-link">
+        <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9" />
+        </svg>
+        Explore DermaDetect
+      </a>
+      <a href="/articles" class="nav-link">
+        <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z" />
+        </svg>
+        Skin Health Articles
+      </a>
+      <a href="/dashboard" class="nav-link active">
+        <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16" />
+        </svg>
+        Dashboard
+      </a>
+      <button class="theme-btn" id="themeToggle" title="Toggle dark mode" onclick="toggleTheme()">
+        <svg id="iconSun" width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"
+          style="display:none">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+            d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364-6.364l-.707.707M6.343 17.657l-.707.707M17.657 17.657l-.707-.707M6.343 6.343l-.707-.707M12 8a4 4 0 100 8 4 4 0 000-8z" />
+        </svg>
+        <svg id="iconMoon" width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+            d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+        </svg>
+      </button>
+      <a href="/logout" class="nav-logout">
+        <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+            d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+        </svg>
+        Sign Out
+      </a>
+    </div>
+  </nav>
+  {% endif %}
+
+  <div class="max-w-5xl mx-auto">
+
+    <!-- Header -->
+    <div class="mb-8 flex items-start justify-between flex-wrap gap-4">
+      <div>
+        <h1 class="text-2xl font-bold" style="color:var(--text-primary)">Patient Dashboard</h1>
+        <p class="text-sm mt-1" style="color:var(--text-muted)">All analyses performed under your account — {{
+          user.first_name }} {{ user.last_name }}</p>
+      </div>
+      <a href="/"
+        style="display:inline-flex;align-items:center;gap:7px;padding:10px 18px;background:linear-gradient(135deg,#0d9488,#0f766e);color:white;font-weight:600;font-size:13px;border-radius:10px;text-decoration:none;box-shadow:0 4px 12px rgba(13,148,136,0.3);transition:all 0.2s"
+        onmouseover="this.style.transform='translateY(-1px)'" onmouseout="this.style.transform=''">
+        <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+        </svg>
+        New Analysis
+      </a>
+    </div>
+
+    <!-- Stats -->
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:28px">
+      <div class="stat-card">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+          <p
+            style="font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;color:var(--text-muted)">
+            Total Analyses</p>
+          <div
+            style="width:36px;height:36px;background:linear-gradient(135deg,#0d9488,#0f766e);border-radius:10px;display:flex;align-items:center;justify-content:center">
+            <svg width="16" height="16" fill="none" stroke="white" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+            </svg>
+          </div>
+        </div>
+        <p style="font-size:32px;font-weight:700;color:var(--text-primary)">{{ total }}</p>
+        <p style="font-size:12px;color:var(--text-muted);margin-top:2px">Records saved</p>
+      </div>
+
+      <div class="stat-card">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+          <p
+            style="font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;color:var(--text-muted)">
+            High Risk</p>
+          <div
+            style="width:36px;height:36px;background:linear-gradient(135deg,#e11d48,#be123c);border-radius:10px;display:flex;align-items:center;justify-content:center">
+            <svg width="16" height="16" fill="none" stroke="white" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+            </svg>
+          </div>
+        </div>
+        <p style="font-size:32px;font-weight:700;color:#e11d48">{{ dangerous_count }}</p>
+        <p style="font-size:12px;color:var(--text-muted);margin-top:2px">Require attention</p>
+      </div>
+
+      <div class="stat-card">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+          <p
+            style="font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;color:var(--text-muted)">
+            Low Risk</p>
+          <div
+            style="width:36px;height:36px;background:linear-gradient(135deg,#0d9488,#0f766e);border-radius:10px;display:flex;align-items:center;justify-content:center">
+            <svg width="16" height="16" fill="none" stroke="white" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+          </div>
+        </div>
+        <p style="font-size:32px;font-weight:700;color:var(--teal)">{{ safe_count }}</p>
+        <p style="font-size:12px;color:var(--text-muted);margin-top:2px">Generally benign</p>
+      </div>
+    </div>
+
+    <!-- Table Card -->
+    <div class="card overflow-hidden">
+      <!-- Table toolbar -->
+      <div
+        style="padding:18px 20px;border-bottom:1px solid var(--divider);display:flex;align-items:center;justify-content:space-between;flex-wrap:gap:10px">
+        <p class="text-sm font-semibold" style="color:var(--text-primary)">Analysis History</p>
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+          <button class="filter-btn active-filter" id="filterAll" onclick="filterTable('all')">All</button>
+          <button class="filter-btn" id="filterDanger" onclick="filterTable('danger')">
+            <span
+              style="width:6px;height:6px;border-radius:50%;background:#e11d48;display:inline-block;margin-right:3px"></span>High
+            Risk
+          </button>
+          <button class="filter-btn" id="filterSafe" onclick="filterTable('safe')">
+            <span
+              style="width:6px;height:6px;border-radius:50%;background:#0d9488;display:inline-block;margin-right:3px"></span>Low
+            Risk
+          </button>
+        </div>
+      </div>
+
+      {% if predictions %}
+      <div style="overflow-x:auto">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Date & Time</th>
+              <th>Age</th>
+              <th>Sex</th>
+              <th>Location</th>
+              <th>Diagnosis</th>
+              <th>Confidence</th>
+              <th>Risk</th>
+            </tr>
+          </thead>
+          <tbody id="tableBody">
+            {% for p in predictions %}
+            <tr class="table-row" data-risk="{{ 'danger' if p.is_dangerous else 'safe' }}">
+              <td>
+                <span style="font-family:'DM Mono',monospace;font-size:11px;color:var(--text-muted)">#{{ loop.index
+                  }}</span>
+              </td>
+              <td>
+                <span style="color:var(--text-primary);font-weight:500">
+                  {{ p.created_at.strftime('%b %d, %Y') if p.created_at else 'N/A' }}
+                </span>
+                <br>
+                <span style="font-size:11px;color:var(--text-muted)">
+                  {{ p.created_at.strftime('%H:%M') if p.created_at else '' }}
+                </span>
+              </td>
+              <td>{{ p.patient_age | int if p.patient_age else '—' }}</td>
+              <td>{{ p.patient_sex | capitalize if p.patient_sex else '—' }}</td>
+              <td>{{ p.localization | capitalize if p.localization else '—' }}</td>
+              <td>
+                <span class="cls-tag">{{ p.predicted_class | upper }}</span>
+                <br>
+                <span style="font-size:12px;color:var(--text-muted);margin-top:3px;display:inline-block">{{
+                  p.predicted_class_full }}</span>
+              </td>
+              <td>
+                <div style="display:flex;align-items:center;gap:8px">
+                  <span
+                    style="font-family:'DM Mono',monospace;font-size:13px;font-weight:600;color:{{ '#e11d48' if p.is_dangerous else '#0d9488' }}">
+                    {{ p.confidence | round(1) if p.confidence else '—' }}%
+                  </span>
+                  <div style="width:48px;height:4px;background:var(--divider);border-radius:2px;overflow:hidden">
+                    <div
+                      style="height:100%;width:{{ [p.confidence, 100] | min }}%;background:{{ '#e11d48' if p.is_dangerous else '#0d9488' }};border-radius:2px">
+                    </div>
+                  </div>
+                </div>
+              </td>
+              <td>
+                {% if p.is_dangerous %}
+                <span class="badge badge-danger">⚠ High</span>
+                {% else %}
+                <span class="badge badge-safe">✓ Low</span>
+                {% endif %}
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Footer row with count + export -->
+      <div
+        style="padding:14px 20px;border-top:1px solid var(--divider);display:flex;align-items:center;justify-content:space-between">
+        <p style="font-size:12px;color:var(--text-muted)">Showing <span id="visibleCount">{{ predictions | length
+            }}</span> of {{ predictions | length }} records</p>
+        <button onclick="exportCSV()"
+          style="display:inline-flex;align-items:center;gap:6px;padding:7px 14px;border-radius:8px;font-size:12px;font-weight:600;color:var(--teal);background:#f0fdfa;border:1px solid #99f6e4;cursor:pointer;transition:all 0.18s"
+          onmouseover="this.style.background='var(--teal)';this.style.color='white'"
+          onmouseout="this.style.background='#f0fdfa';this.style.color='var(--teal)'">
+          <svg width="13" height="13" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+              d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+          </svg>
+          Export CSV
+        </button>
+      </div>
+
+      {% else %}
+      <!-- Empty state -->
+      <div class="empty-state">
+        <div
+          style="width:64px;height:64px;border-radius:20px;background:var(--result-bg);border:1px solid var(--card-border);display:flex;align-items:center;justify-content:center;margin:0 auto 20px">
+          <svg width="28" height="28" fill="none" stroke="var(--text-muted)" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+              d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+          </svg>
+        </div>
+        <h3 style="font-size:16px;font-weight:700;color:var(--text-primary);margin-bottom:6px">No analyses yet</h3>
+        <p style="font-size:13px;color:var(--text-muted);max-width:320px;margin:0 auto 20px;line-height:1.6">Run your
+          first analysis and the results will appear here automatically.</p>
+        <a href="/"
+          style="display:inline-flex;align-items:center;gap:7px;padding:10px 20px;background:linear-gradient(135deg,#0d9488,#0f766e);color:white;font-weight:600;font-size:13px;border-radius:10px;text-decoration:none">
+          <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+          </svg>
+          Start First Analysis
+        </a>
+      </div>
+      {% endif %}
+    </div>
+
+  </div>
+
+  <script>
+    // Dark mode
+    const html = document.documentElement;
+    const iconSun = document.getElementById('iconSun');
+    const iconMoon = document.getElementById('iconMoon');
+    function applyTheme(dark) {
+      if (dark) { html.classList.add('dark'); if (iconSun) { iconSun.style.display = 'block'; iconMoon.style.display = 'none'; } }
+      else { html.classList.remove('dark'); if (iconSun) { iconSun.style.display = 'none'; iconMoon.style.display = 'block'; } }
+    }
+    function toggleTheme() {
+      const isDark = html.classList.contains('dark');
+      localStorage.setItem('theme', isDark ? 'light' : 'dark');
+      applyTheme(!isDark);
+    }
+    applyTheme(localStorage.getItem('theme') === 'dark');
+
+    // Filter table
+    let currentFilter = 'all';
+    function filterTable(type) {
+      currentFilter = type;
+      const rows = document.querySelectorAll('.table-row');
+      let visible = 0;
+      rows.forEach(row => {
+        const risk = row.getAttribute('data-risk');
+        const show = type === 'all' || risk === type;
+        row.style.display = show ? '' : 'none';
+        if (show) visible++;
+      });
+      const vc = document.getElementById('visibleCount');
+      if (vc) vc.textContent = visible;
+
+      document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active-filter'));
+      const active = { all: 'filterAll', danger: 'filterDanger', safe: 'filterSafe' }[type];
+      const el = document.getElementById(active);
+      if (el) el.classList.add('active-filter');
+    }
+
+    // Export CSV
+    function exportCSV() {
+      const rows = document.querySelectorAll('.table-row');
+      const headers = ['Date', 'Age', 'Sex', 'Location', 'Class', 'Diagnosis', 'Confidence%', 'Risk'];
+      const lines = [headers.join(',')];
+      rows.forEach(row => {
+        const cells = row.querySelectorAll('td');
+        const date = cells[1]?.innerText.replace(/\n/g, ' ').trim() || '';
+        const age = cells[2]?.innerText.trim() || '';
+        const sex = cells[3]?.innerText.trim() || '';
+        const loc = cells[4]?.innerText.trim() || '';
+        const cls = cells[5]?.querySelector('.cls-tag')?.innerText.trim() || '';
+        const diag = cells[5]?.querySelector('span:not(.cls-tag)')?.innerText.trim() || '';
+        const conf = cells[6]?.innerText.match(/[\d.]+/)?.[0] || '';
+        const risk = cells[7]?.innerText.trim().replace('⚠ ', '').replace('✓ ', '') || '';
+        lines.push([`"${date}"`, age, sex, loc, cls, `"${diag}"`, conf, risk].join(','));
+      });
+      const blob = new Blob([lines.join('\n')], { type: 'text/csv' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a'); a.href = url;
+      a.download = `DermaDetect_history-${Date.now()}.csv`;
+      a.click(); URL.revokeObjectURL(url);
+    }
+  </script>
+</body>
+
+</html>
